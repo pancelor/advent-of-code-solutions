@@ -6,7 +6,10 @@ import (
 	"os"
 	"strconv"
 	"log"
+	"flag"
 )
+
+var infile = flag.String("in", "in.txt", "input file")
 
 func check(err error) {
 	if err != nil {
@@ -15,16 +18,28 @@ func check(err error) {
 }
 
 func main() {
+	flag.Parse()
 	log.SetFlags(0)
 	log.SetPrefix("debug: ")
 
-	scanner := bufio.NewScanner(os.Stdin)
+	memory := make(map[int]bool)
 	var total int
-	for scanner.Scan() {
-		val, err := strconv.Atoi(scanner.Text())
-		// log.Println(val)
+	loop: for {
+		log.Println("again")
+		stream, err := os.Open(*infile)
 		check(err)
-		total += val
+		scanner := bufio.NewScanner(stream)
+		for scanner.Scan() {
+			val, err := strconv.Atoi(scanner.Text())
+			check(err)
+			seen := memory[total]
+			// log.Println(val, total, seen)
+			if seen {
+				fmt.Println(total)
+				break loop
+			}
+			memory[total] = true
+			total += val
+		}
 	}
-	fmt.Println(total)
 }
