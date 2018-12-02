@@ -5,7 +5,7 @@ import (
 	"bufio"
 	"io"
 	"os"
-	"log"
+	debug "log"
 	// "flag"
 )
 
@@ -16,45 +16,43 @@ func check(err error) {
 }
 
 func main() {
-	log.SetFlags(0)
-	log.SetPrefix("debug: ")
+	debug.SetFlags(0)
+	debug.SetPrefix("debug: ")
 
 	reader := NewValReader(os.Stdin)
-
-	hasDouble := 0
-	hasTriple := 0
+	seen := make(map[string]bool)
 	for v := range reader.Vals() {
-		c := newCounter(v)
-		if len(reverseLookup(c, 2)) > 0 {
-			hasDouble += 1
+		mutations := allMutations(v)
+		// debug.Println(mutations)
+		for _, m := range mutations {
+			if seen[m] {
+				fmt.Println(m)
+				return
+			}
 		}
-		if len(reverseLookup(c, 3)) > 0 {
-			hasTriple += 1
+		for _, m := range mutations {
+			seen[m] = true
 		}
 	}
 	check(reader.Err())
-	fmt.Println(hasDouble*hasTriple)
 }
 
-type counter map[byte]int
-
-func newCounter(s string) (m counter) {
-	m = make(map[byte]int)
-	for _, b := range []byte(s) {
-		m[b] += 1
-	}
-	return
-}
-
-func reverseLookup(c counter, target int) []byte {
-	res := make([]byte, 0)
-	for key := range c {
-		// log.Printf("key %c val %v\n", key, c[key])
-		if c[key] == target {
-			res = append(res, key)
+func allMutations(s string) []string {
+	bytes := []byte(s)
+	mutations := make([]string, len(bytes))
+	for i := 0; i < len(bytes); i++ {
+		// splice out character i
+		spliced := make([]byte, len(bytes)-1)
+		for j := 0; j < len(spliced); j++ {
+			offset := 0
+			if j >= i {
+				offset = 1
+			}
+			spliced[j] = bytes[j + offset]
 		}
+		mutations[i] = string(spliced)
 	}
-	return res
+	return mutations
 }
 
 
