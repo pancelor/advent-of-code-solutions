@@ -28,17 +28,13 @@ func main() {
 func solve(reader valReader) (res int, outErr error) {
 	v := <-reader.Vals()
 	res = 0
-	for i := 0; i < len(v); i++ {
+	halfLen := len(v)/2
+	for i := 0; i < halfLen; i++ {
 		curr := v[i]
-		var prev byte
-		if (i == 0) {
-			prev = v[len(v)-1]
-		} else {
-			prev = v[i-1]
-		}
-		// debug.Println(i, curr, prev)
-		if curr == prev {
-			res += int(curr - '0')
+		pair := v[i+halfLen]
+		// debug.Printf("i %d: %c %c", i, curr, pair)
+		if curr == pair {
+			res += 2*int(curr - '0')
 		}
 	}
 	return
