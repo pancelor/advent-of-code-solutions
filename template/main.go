@@ -1,12 +1,11 @@
 package main
 
 import (
-	// "fmt"
 	"bufio"
+	debug "log"
 	"io"
+	"fmt"
 	"os"
-	"log"
-	// "flag"
 )
 
 func check(err error) {
@@ -16,54 +15,71 @@ func check(err error) {
 }
 
 func main() {
-	log.SetFlags(0)
-	log.SetPrefix("debug: ")
+	debug.SetFlags(0)
+	debug.SetPrefix("debug: ")
 
-	reader := NewValReader(os.Stdin)
-
-	for v := range reader.Vals() {
-		log.Println(v)
+	answer, err := solve(newValReader(os.Stdin))
+	if err != nil {
+		panic(err)
 	}
-	check(reader.Err())
+	fmt.Println(answer)
 }
 
+func solve(reader valReader) (answer string, outErr error) {
+	for v := range reader.Vals() {
+		debug.Println(v)
+	}
+	answer = "unimplemented"
+	return
+}
+
+
+// valReader converts an `io.Reader` to a `chan string`
+// usage:
+//   reader := newValReader(os.Stdin)
+//   for val := reader.Vals() {
+//     _ = val
+//   }
+//   if reader.Err() != nil {
+//     panic(err)
+//   }
 type valReader struct {
-	stream io.Reader
-	c chan string
+	in io.Reader
+	out chan string
 	err error
 }
 
-func NewValReader(stream io.Reader) valReader {
-	c := make(chan string)
+func newValReader(in io.Reader) valReader {
+	out := make(chan string)
 	return valReader{
-		stream: stream,
-		c: c,
+		in: in,
+		out: out,
 	}
+}
+
+func (r *valReader) Vals() chan string {
+	go func() {
+		scanner := bufio.NewScanner(r.in)
+		for scanner.Scan() {
+			r.out <- scanner.Text()
+		}
+		if r.check(scanner.Err()) {
+			return
+		}
+		close(r.out)
+	}()
+	return r.out
+}
+
+func (r *valReader) Err() error {
+	return r.err
 }
 
 func (r *valReader) check(err error) bool {
 	if err != nil {
 		r.err = err
-		close(r.c)
+		close(r.out)
 		return true
 	}
 	return false
-}
-
-func (r *valReader) Vals() chan string {
-	go func() {
-		scanner := bufio.NewScanner(r.stream)
-		for scanner.Scan() {
-			r.c <- scanner.Text()
-		}
-		if r.check(scanner.Err()) {
-			return
-		}
-		close(r.c)
-	}()
-	return r.c
-}
-
-func (r *valReader) Err() error {
-	return r.err
 }

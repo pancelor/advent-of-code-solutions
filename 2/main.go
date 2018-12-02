@@ -1,12 +1,11 @@
 package main
 
 import (
-	"fmt"
 	"bufio"
-	"io"
-	"os"
 	debug "log"
-	// "flag"
+	"io"
+	"fmt"
+	"os"
 )
 
 func check(err error) {
@@ -19,14 +18,21 @@ func main() {
 	debug.SetFlags(0)
 	debug.SetPrefix("debug: ")
 
-	reader := NewValReader(os.Stdin)
+	answer, err := solve(NewValReader(os.Stdin))
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(answer)
+}
+
+func solve(reader valReader) (answer string, outErr error) {
 	seen := make(map[string]bool)
 	for v := range reader.Vals() {
 		mutations := allMutations(v)
 		// debug.Println(mutations)
 		for _, m := range mutations {
 			if seen[m] {
-				fmt.Println(m)
+				answer = m
 				return
 			}
 		}
@@ -34,7 +40,10 @@ func main() {
 			seen[m] = true
 		}
 	}
-	check(reader.Err())
+	if err := reader.Err(); err != nil {
+		outErr = err
+	}
+	return
 }
 
 func allMutations(s string) []string {
@@ -56,44 +65,52 @@ func allMutations(s string) []string {
 }
 
 
-
+// valReader converts an `io.Reader` to a `chan string`
+// usage:
+//   reader := newValReader(os.Stdin)
+//   for val := reader.Vals() {
+//     _ = val
+//   }
+//   if reader.Err() != nil {
+//     panic(err)
+//   }
 type valReader struct {
-	stream io.Reader
-	c chan string
+	in io.Reader
+	out chan string
 	err error
 }
 
-func NewValReader(stream io.Reader) valReader {
-	c := make(chan string)
+func NewValReader(in io.Reader) valReader {
+	out := make(chan string)
 	return valReader{
-		stream: stream,
-		c: c,
+		in: in,
+		out: out,
 	}
+}
+
+func (r *valReader) Vals() chan string {
+	go func() {
+		scanner := bufio.NewScanner(r.in)
+		for scanner.Scan() {
+			r.out <- scanner.Text()
+		}
+		if r.check(scanner.Err()) {
+			return
+		}
+		close(r.out)
+	}()
+	return r.out
+}
+
+func (r *valReader) Err() error {
+	return r.err
 }
 
 func (r *valReader) check(err error) bool {
 	if err != nil {
 		r.err = err
-		close(r.c)
+		close(r.out)
 		return true
 	}
 	return false
-}
-
-func (r *valReader) Vals() chan string {
-	go func() {
-		scanner := bufio.NewScanner(r.stream)
-		for scanner.Scan() {
-			r.c <- scanner.Text()
-		}
-		if r.check(scanner.Err()) {
-			return
-		}
-		close(r.c)
-	}()
-	return r.c
-}
-
-func (r *valReader) Err() error {
-	return r.err
 }
