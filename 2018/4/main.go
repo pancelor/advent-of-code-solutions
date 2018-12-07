@@ -37,16 +37,45 @@ func solve(reader valReader) (answer string, outErr error) {
 
 	// sleepPatterns[guard_id][min] is the number of times
 	//   that guard was asleep at that minute
-	sleepPatterns := make(map[int][]int, 60)
-	for l := range night.LogGenerator(lines) {
-		debug.Printf("%#v\n", l)
-		_ = sleepPatterns
-		// sleepPatterns[currentGuard][] // TODO
+	sleepPatterns := make(map[int][]int)
+	for state := range night.StateGenerator(lines) {
+		// debug.Printf("%#v\n", state)
+		if state.Asleep {
+			if sleepPatterns[state.Guard] == nil {
+				sleepPatterns[state.Guard] = make([]int, 60)
+			}
+			sleepPatterns[state.Guard][state.Time] += 1
+		}
 	}
+
+	debugPatterns(sleepPatterns)
 
 	answer = "unimplemented"
 	return
 }
+
+func debugPatterns(pats map[int][]int) {
+	fmt.Println("      ID | Minute")
+	fmt.Println("         | 000000000011111111112222222222333333333344444444445555555555")
+	fmt.Println("         | 012345678901234567890123456789012345678901234567890123456789")
+	fmt.Println("-----------------------------------------------------------------------")
+	for id, arr := range pats {
+		fmt.Printf(" #%6d | ", id)
+		for _, sleepCount := range arr {
+			if sleepCount >= 100 {
+				fmt.Printf("*")
+			} else if sleepCount >= 10 {
+				fmt.Printf("x")
+			} else {
+				fmt.Printf("%d", sleepCount)
+			}
+		}
+		fmt.Printf("\n")
+	}
+	fmt.Println()
+}
+
+
 
 // valReader converts an `io.Reader` to a `chan string`
 // usage:

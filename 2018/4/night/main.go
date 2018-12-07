@@ -15,12 +15,12 @@ type LogLine struct {
 	Ev    Event
 }
 
-func LogGenerator(lines []string) chan GuardState {
+func StateGenerator(lines []string) chan GuardState {
 	c := make(chan GuardState)
 	go func() {
 		var currentGuard int
 		var sleeping bool
-		var t int
+		t := 0
 		for _, s := range lines {
 			l, err := NewLogLine(s)
 			if err != nil {
@@ -28,26 +28,26 @@ func LogGenerator(lines []string) chan GuardState {
 			}
 			// c <- l // temp
 			if l.Ev.Sleep() {
-				for ; t < l.Mins; t++ {
-					c <- GuardState{guard: currentGuard, asleep: sleeping, time: t}
-				}
 				assert(currentGuard != 0)
 				assert(!sleeping)
+				for ; t < l.Mins; t++ {
+					c <- GuardState{Guard: currentGuard, Asleep: sleeping, Time: t}
+				}
 				sleeping = true
 			} else if l.Ev.Wake() {
-				for ; t < l.Mins; t++ {
-					c <- GuardState{guard: currentGuard, asleep: sleeping, time: t}
-				}
 				assert(currentGuard != 0)
 				assert(sleeping)
+				for ; t < l.Mins; t++ {
+					c <- GuardState{Guard: currentGuard, Asleep: sleeping, Time: t}
+				}
 				sleeping = false
 			} else if nextGuard := l.Ev.GuardChange(); nextGuard != 0 {
+				assert(!sleeping)
 				if currentGuard != 0 {
 					for ; t < 60; t++ {
-						c <- GuardState{guard: currentGuard, asleep: sleeping, time: t}
+						c <- GuardState{Guard: currentGuard, Asleep: sleeping, Time: t}
 					}
 				}
-				assert(!sleeping) // TODO how early/late can they arrive?
 				currentGuard = nextGuard
 				sleeping = false // redundant
 				if l.Hours > 0 {
@@ -59,15 +59,19 @@ func LogGenerator(lines []string) chan GuardState {
 				panic(fmt.Sprintf("bad event: %#v", l.Ev))
 			}
 		}
+		// cleanup very last shift
+		for ; t < 60; t++ {
+			c <- GuardState{Guard: currentGuard, Asleep: sleeping, Time: t}
+		}
 		close(c)
 	}()
 	return c
 }
 
 type GuardState struct {
-	guard  int
-	asleep bool
-	time   int
+	Guard  int
+	Asleep bool
+	Time   int
 }
 
 func assert(b bool) {
