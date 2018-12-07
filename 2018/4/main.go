@@ -55,7 +55,7 @@ func solve(reader valReader) (answer int, outErr error) {
 
 	debug.Println(guard, max, minute)
 
-	answer = max*minute
+	answer = guard*minute
 	return
 }
 
