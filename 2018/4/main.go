@@ -27,7 +27,7 @@ func main() {
 	fmt.Println(answer)
 }
 
-func solve(reader valReader) (answer string, outErr error) {
+func solve(reader valReader) (answer int, outErr error) {
 	lines := make([]string, 0)
 	for v := range reader.Vals() {
 		lines = append(lines, v)
@@ -50,8 +50,21 @@ func solve(reader valReader) (answer string, outErr error) {
 
 	debugPatterns(sleepPatterns)
 
-	answer = "unimplemented"
+	guard, max := argmax(sum, sleepPatterns)
+	minute := maxInt(sleepPatterns[guard])
+
+	debug.Println(guard, max, minute)
+
+	answer = max*minute
 	return
+}
+
+func sum(a []int) int {
+	res := 0
+	for _, e := range a {
+		res += e
+	}
+	return res
 }
 
 func debugPatterns(pats map[int][]int) {
@@ -73,6 +86,41 @@ func debugPatterns(pats map[int][]int) {
 		fmt.Printf("\n")
 	}
 	fmt.Println()
+}
+
+func argmax(proj func([]int) int, m map[int][]int) (arg, max int) {
+	if len(m) == 0 {
+		panic("empty array")
+	}
+	arg = 0
+	max = 0 // hacky; not mathematically correct
+	for k, v := range m {
+		p := proj(v)
+		if proj(v) > max {
+			arg = k
+			max = p
+		}
+	}
+	if arg == 0 {
+		panic("probably need to rewrite argmax to play nice")
+	}
+	return
+}
+
+func maxInt(a []int) (max int) {
+	if len(a) == 0 {
+		panic("empty array")
+	}
+	max = 0 // hacky; not mathematically correct
+	for _, e := range a {
+		if e > max {
+			max = e
+		}
+	}
+	if max == 0 {
+		panic("probably need to rewrite argmax to play nice")
+	}
+	return
 }
 
 
