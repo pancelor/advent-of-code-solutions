@@ -51,9 +51,9 @@ func solve(reader valReader) (answer int, outErr error) {
 	debugPatterns(sleepPatterns)
 
 	guard, max := argmax(sum, sleepPatterns)
-	minute := maxInt(sleepPatterns[guard])
+	minute, _ := argmaxInt(sleepPatterns[guard])
 
-	debug.Println(guard, max, minute)
+	debug.Printf("Guard #%d slept for %d minutes overall; mostly at time %d\n", guard, max, minute)
 
 	answer = guard*minute
 	return
@@ -103,6 +103,24 @@ func argmax(proj func([]int) int, m map[int][]int) (arg, max int) {
 	}
 	if arg == 0 {
 		panic("probably need to rewrite argmax to play nice")
+	}
+	return
+}
+
+func argmaxInt(arr []int) (arg, max int) {
+	if len(arr) == 0 {
+		panic("empty array")
+	}
+	arg = 0
+	max = 0 // hacky; not mathematically correct
+	for k, v := range arr {
+		if v > max {
+			arg = k
+			max = v
+		}
+	}
+	if arg == 0 {
+		panic("probably need to rewrite argmaxInt to play nice")
 	}
 	return
 }
