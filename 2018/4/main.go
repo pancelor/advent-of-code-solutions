@@ -50,10 +50,16 @@ func solve(reader valReader) (answer int, outErr error) {
 
 	debugPatterns(sleepPatterns)
 
-	guard, max := argmax(sum, sleepPatterns)
+	guard, max := argmaxPatterns(
+		func(pat []int) int {
+			_, numTimes := argmaxInt(pat)
+			return numTimes
+		},
+		sleepPatterns,
+	)
 	minute, _ := argmaxInt(sleepPatterns[guard])
 
-	debug.Printf("Guard #%d slept for %d minutes overall; mostly at time %d\n", guard, max, minute)
+	debug.Printf("Guard #%d was asleep %d times during minute %d\n", guard, max, minute)
 
 	answer = guard*minute
 	return
@@ -75,12 +81,12 @@ func debugPatterns(pats map[int][]int) {
 	for id, arr := range pats {
 		fmt.Printf(" #%6d | ", id)
 		for _, sleepCount := range arr {
-			if sleepCount >= 100 {
-				fmt.Printf("*")
-			} else if sleepCount >= 10 {
+			if sleepCount >= 20 {
 				fmt.Printf("x")
+			} else if sleepCount >= 10 {
+				fmt.Printf("%d", sleepCount-10)
 			} else {
-				fmt.Printf("%d", sleepCount)
+				fmt.Printf("-")
 			}
 		}
 		fmt.Printf("\n")
@@ -88,7 +94,7 @@ func debugPatterns(pats map[int][]int) {
 	fmt.Println()
 }
 
-func argmax(proj func([]int) int, m map[int][]int) (arg, max int) {
+func argmaxPatterns(proj func([]int) int, m map[int][]int) (arg, max int) {
 	if len(m) == 0 {
 		panic("empty array")
 	}
