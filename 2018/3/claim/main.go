@@ -20,7 +20,10 @@ func New(spec string) Claim {
 	}
 	fmt.Sscanf(spec, "#%d @ %d,%d: %dx%d", &c.id, &c.x, &c.y, &c.w, &c.h)
 	if c.w == 0 || c.h == 0 {
-		panic(fmt.Sprintf("zero area claim %v", spec))
+		panic(fmt.Sprintf("zero area claim: %v", spec))
+	}
+	if c.id == 0 {
+		panic(fmt.Sprintf("claim id cannot be zero: %v", spec))
 	}
 	return c
 }

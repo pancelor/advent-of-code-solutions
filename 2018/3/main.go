@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	debug "log"
+	"errors"
 	"io"
 	"fmt"
 	"os"
@@ -45,21 +46,18 @@ func solve(reader valReader) (answer int, outErr error) {
 	g := newGrid(xMax, yMax)
 	// printGrid(g)
 
+	badClaims := make(map[int]bool)
 	for _, c := range claims {
-		addClaimToGrid(c, g)
+		addClaimToGrid(c, g, badClaims)
 		// printGrid(g)
 	}
 
-	reducer := func(acc, x int) int {
-		if (x > 1) {
-			return acc + 1
-		} else {
-			return acc
+	for _, c := range claims {
+		if !badClaims[c.Id()] {
+			return c.Id(), nil
 		}
 	}
-	numTilesWithOverlap := reduceGrid(reducer, 0, g)
-
-	return numTilesWithOverlap, nil
+	return 0, errors.New("no uncontested claims found")
 }
 
 func reduceGrid(reducer func(int, int) int, init int, g grid) int {
@@ -76,12 +74,18 @@ func reduceGrid(reducer func(int, int) int, init int, g grid) int {
 	return res
 }
 
-func addClaimToGrid(c claim.Claim, g grid) {
-	rMax := c.Bottom()
-	cMax := c.Right()
-	for r := c.Y(); r < rMax; r++ {
-		for c := c.X(); c < cMax; c++ {
-			g[r][c] += 1
+func addClaimToGrid(cl claim.Claim, g grid, badClaims map[int]bool) {
+	rMax := cl.Bottom()
+	cMax := cl.Right()
+	for r := cl.Y(); r < rMax; r++ {
+		for c := cl.X(); c < cMax; c++ {
+			existing := g[r][c]
+			if existing == 0 {
+				g[r][c] = cl.Id()
+			} else {
+				badClaims[cl.Id()] = true
+				badClaims[existing] = true
+			}
 		}
 	}
 }
