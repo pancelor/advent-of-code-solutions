@@ -15,6 +15,10 @@ func check(err error) {
 	}
 }
 
+var (
+	line string
+)
+
 func main() {
 	debug.SetFlags(0)
 	debug.SetPrefix("debug: ")
@@ -26,13 +30,39 @@ func main() {
 	fmt.Println(answer)
 }
 
-func solve(reader valReader) (answer int, outErr error) {
-	line := <-reader.Vals()
+func newMask() []int {
+	mask := make([]int, len(line))
+	for i := 0; i < len(mask); i++ {
+		mask[i] = 1
+	}
+	return mask
+}
 
-	answer = 11298
+func debugLine() {
+	fmt.Printf("       [")
+	for i, e := range line {
+		if i != 0 {
+			fmt.Printf(" ")
+		}
+		fmt.Printf("%c", e)
+	}
+	fmt.Printf("]\n")
+}
+
+func solve(reader valReader) (answer int, outErr error) {
+	line = <-reader.Vals()
+
+	// debugLine()
+
+	mask := newMask()
+	for annihilateOnePass(mask) {}
+	answer = sum(mask)
+	debug.Printf("base string: %d", answer)
 	for c := 'a'; c <= 'z'; c++ {
-		reduced := fpa(annihilateOnce, killPair(c, line))
-		res := len(reduced)
+		mask := newMask()
+		killPair(c, mask)
+		for annihilateOnePass(mask) {}
+		res := sum(mask)
 		if res < answer {
 			answer = res
 		}
@@ -42,30 +72,50 @@ func solve(reader valReader) (answer int, outErr error) {
 	return
 }
 
-func killPair(toKill rune, line string) string {
-	res := make([]string, 0)
-	last := 0
+func killPair(toKill rune, mask []int) {
 	for i, c := range(strings.ToLower(line)) {
 		if c == toKill {
-			res = append(res, line[last:i])
-			last = i+1
+			mask[i] = 0
 		}
 	}
-	res = append(res, line[last:])
-	return strings.Join(res, "")
 }
 
-func annihilateOnce(s string) string {
-	// debug.Println(s)
-	for i := 0; i < len(s)-1; i++ {
-		if shouldAnnihilate(s[i], s[i+1]) {
-			return strings.Join([]string{s[:i], s[i+2:]}, "")
+func annihilateOnePass(mask []int) bool {
+	// debug.Println(mask)
+	prevI := -1
+	changes := false
+	for i := 0; i < len(mask); i++ {
+		if mask[i] == 1 {
+			if prevI == -1 {
+				prevI = i
+			} else {
+				if shouldAnnihilate(prevI, i) {
+					changes = true
+					mask[prevI] = 0
+					mask[i] = 0
+					prevI = -1
+				} else {
+					prevI = i
+				}
+			}
+		} else if mask[i] == 0 {
+
+		} else {
+			assert(false)
 		}
 	}
-	return s
+	return changes
 }
 
-func shouldAnnihilate(c1 byte, c2 byte) bool {
+func assert(b bool) {
+	if !b {
+		panic("assertion failed")
+	}
+}
+
+func shouldAnnihilate(i1, i2 int) bool {
+	c1 := line[i1]
+	c2 := line[i2]
 	if c2 < c1 {
 		c1, c2 = c2, c1
 	}
@@ -77,17 +127,15 @@ func shouldAnnihilate(c1 byte, c2 byte) bool {
 	return c1Upper && c2Lower && diffCorrect
 }
 
-// repeatedly calls x = iterate(x) until x stops changing
-func fpa(iterate func(string) string, x string) string {
-	var last string
-	for {
-		last = x
-		x = iterate(x)
-		if last == x {
-			return x
-		}
+func sum(a []int) int {
+	res := 0
+	for _, e := range a {
+		res += e
 	}
+	return res
 }
+
+
 
 // valReader converts an `io.Reader` to a `chan string`
 // usage:
