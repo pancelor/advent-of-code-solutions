@@ -29,10 +29,30 @@ func main() {
 func solve(reader valReader) (answer int, outErr error) {
 	line := <-reader.Vals()
 
-	reduced := fpa(annihilateOnce, line)
-	answer = len(reduced)
+	answer = 11298
+	for c := 'a'; c <= 'z'; c++ {
+		reduced := fpa(annihilateOnce, killPair(c, line))
+		res := len(reduced)
+		if res < answer {
+			answer = res
+		}
+		debug.Printf("c %c; res %d; answer %d", c, res, answer)
+	}
 
 	return
+}
+
+func killPair(toKill rune, line string) string {
+	res := make([]string, 0)
+	last := 0
+	for i, c := range(strings.ToLower(line)) {
+		if c == toKill {
+			res = append(res, line[last:i])
+			last = i+1
+		}
+	}
+	res = append(res, line[last:])
+	return strings.Join(res, "")
 }
 
 func annihilateOnce(s string) string {
