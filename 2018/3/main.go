@@ -30,9 +30,6 @@ func solve(reader valReader) (answer int, outErr error) {
 	claims := make([]claim.Claim, 0)
 	for v := range reader.Vals() {
 		c := claim.New(v)
-		// x1, y1 := c.TopLeft()
-		// x2, y2 := c.BottomRightExclusive()
-		// debug.Println(x1, y1, x2, y2)
 		claims = append(claims, c)
 	}
 	outErr = reader.Err()
@@ -40,29 +37,114 @@ func solve(reader valReader) (answer int, outErr error) {
 		return
 	}
 
-	w, h := getMaxSize(claims)
+	xMax, yMax := getMaxSize(claims)
 
-	fmt.Println(claims)
-	fmt.Println(w, h)
+	// fmt.Println(claims)
+	// fmt.Printf("size: %dx%d\n", yMax, xMax)
 
-	return
+	g := newGrid(xMax, yMax)
+	// printGrid(g)
+
+	for _, c := range claims {
+		addClaimToGrid(c, g)
+		// printGrid(g)
+	}
+
+	reducer := func(acc, x int) int {
+		if (x > 1) {
+			return acc + 1
+		} else {
+			return acc
+		}
+	}
+	numTilesWithOverlap := reduceGrid(reducer, 0, g)
+
+	return numTilesWithOverlap, nil
 }
 
-func getMaxSize(claims []claim.Claim) (int, int) {
-	return 1,2
-}
-
-type projection func(c claim.Claim) int
-func maxByKey(arr []claim.Claim, key projection, int default) claim.Claim {
-	res = 0
-	for _, e := range arr {
-		val := key(e)
-		if val > res {
-			res = val
+func reduceGrid(reducer func(int, int) int, init int, g grid) int {
+	res := init
+	rMax := len(g)
+	if rMax > 0 {
+		cMax := len(g[0])
+		for r := 0; r < rMax; r++ {
+			for c := 0; c < cMax; c++ {
+				res = reducer(res, g[r][c])
+			}
 		}
 	}
 	return res
 }
+
+func addClaimToGrid(c claim.Claim, g grid) {
+	rMax := c.Bottom()
+	cMax := c.Right()
+	for r := c.Y(); r < rMax; r++ {
+		for c := c.X(); c < cMax; c++ {
+			g[r][c] += 1
+		}
+	}
+}
+
+type grid [][]int
+
+func newGrid(w, h int) grid {
+	g := make([][]int, h)
+	for i := 0; i < h; i++ {
+		g[i] = make([]int, w)
+	}
+	return g
+}
+
+func printGrid(g grid) {
+	fmt.Print("[")
+	h := len(g)
+	if h > 0 {
+		w := len(g[0])
+		for r := 0; r < h; r++ {
+			if r != 0 {
+				fmt.Print("\n ")
+			}
+			fmt.Print("[")
+			for c := 0; c < w; c++ {
+				if c != 0 {
+					fmt.Print(" ")
+				}
+				fmt.Print(g[r][c])
+			}
+			fmt.Print("]")
+		}
+	}
+	fmt.Print("]\n")
+}
+
+func getMaxSize(claims []claim.Claim) (xMax, yMax int) {
+	xMax = max(fmapClaims(func(c claim.Claim) int { return c.Right() }, claims), 1)
+	yMax = max(fmapClaims(func(c claim.Claim) int { return c.Bottom() }, claims), 1)
+	return
+}
+
+func fmapClaims(proj func(c claim.Claim) int, arr []claim.Claim) []int {
+	res := make([]int, len(arr))
+	for i, in := range arr {
+		res[i] = proj(in)
+	}
+	return res
+}
+
+func max(arr []int, def int) int {
+	if len(arr) == 0 {
+		return def
+	}
+	res := arr[0]
+	for _, e := range arr {
+		if e > res {
+			res = e
+		}
+	}
+	return res
+}
+
 
 
 // valReader converts an `io.Reader` to a `chan string`

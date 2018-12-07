@@ -45,14 +45,12 @@ func (c Claim) H() int {
 	return c.h
 }
 
-func (c Claim) TopLeft() (int, int) {
-	return c.x, c.y
+// one square past, actually
+func (c Claim) Bottom() int {
+	return c.y + c.h
 }
 
-func (c Claim) BottomRight() (int, int) {
-	return c.x+c.w-1, c.y+c.h-1
-}
-
-func (c Claim) BottomRightExclusive() (int, int) {
-	return c.x+c.w, c.y+c.h
+// one square past, actually
+func (c Claim) Right() int {
+	return c.x + c.w
 }
