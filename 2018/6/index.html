@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>visualizer</title>
+</head>
+<body>
+  <canvas id="mainCanvas" width="640", height="480">oops ur browser bad</canvas>
+  <button id="resetButton">reset</button>
+  <button id="nextButton">next</button>
+</body>
+<script src="./lodash.js"></script>
+<script type="text/javascript">
+  resetButton.onclick = resetPoints
+  nextButton.onclick = advanceAnimation
+  mainCanvas.onclick = addPoint
+  window.onload = init
+
+  let points = [
+    {x: 1*48, y: 1*48},
+    {x: 1*48, y: 6*48},
+    {x: 8*48, y: 3*48},
+    {x: 3*48, y: 4*48},
+    {x: 5*48, y: 5*48},
+    {x: 8*48, y: 9*48},
+  ]
+
+  let ctx
+  let stack = [] // used for animation
+  let toVisit = []
+
+  function cls() {
+    ctx.fillStyle = 'lightgray';
+    ctx.fillRect(0, 0, mainCanvas.width, mainCanvas.height)
+  }
+
+  function resetAnimation() {
+    stack = []
+  }
+
+  function argminBy(arr, f) {
+    if (arr.length === 0) {
+      return undefined
+    }
+    argmin = 0
+    min = arr[0]
+    for (var i = 1; i < arr.length; i++) {
+      elem = arr[i]
+      if (elem < min) {
+        argmin = i
+        min = elem
+      }
+    }
+    return argmin
+  }
+
+  // Three points are a counter-clockwise turn if ccw > 0, clockwise if
+  // ccw < 0, and collinear if ccw = 0 because ccw is a determinant that
+  // gives twice the signed  area of the triangle formed by p1, p2 and p3.
+  function ccw(p1, p2, p3) {
+    // (sign flipped from wiki b/c of game coordinates)
+    return -((p2.x - p1.x)*(p3.y - p1.y) - (p2.y - p1.y)*(p3.x - p1.x))
+  }
+
+  function stackCcw(ix1, ix2, ix3) {
+    if (ix1 < 0) {
+      ix1 = ix1 + stack.length
+    }
+    if (ix2 < 0) {
+      ix2 += stack.length
+    }
+    if (ix3 < 0) {
+      ix3 += stack.length
+    }
+    return ccw(stack[ix1], stack[ix2], stack[ix3])
+  }
+
+  // slope of line from p1 to p2. remember that we're using game coords
+  function slope(p1, p2) {
+    return (p2.y-p1.y) / (p2.x-p1.x)
+  }
+
+  function line(p1, p2, color=undefined) {
+    // console.log({p1, p2, color});
+    if (color) {
+      ctx.strokeStyle = color;
+    }
+    ctx.beginPath()
+    ctx.moveTo(p1.x, p1.y)
+    ctx.lineTo(p2.x, p2.y)
+    ctx.stroke()
+  }
+
+  function advanceAnimation() {
+    cls()
+    drawPoints()
+    console.log("advanceAnimation", stack)
+    drawFullStack('black')
+
+    if (stack.length === 0) {
+      console.log("inside");
+      const i = argminBy(points, p=>p.y)
+      const start = points[i]
+      toVisit = [...points.slice(0, i), ...points.slice(i+1, points.length)]
+      toVisit = _.sortBy(toVisit, p=>slope(start, p))
+      // console.log({stack})
+      // console.log({toVisit})
+
+      stack.push(start)
+    }
+    // console.log({stack})
+    // console.log({toVisit})
+    if (stack.length > 2) {
+      const det = stackCcw(-3, -2, -1)
+      console.log({det});
+      if (det < 0) {
+        drawOneStackLine(-3, -1, 'red')
+        const toPush = stack.pop()
+        stack.pop()
+        stack.push(toPush)
+        return
+      }
+    }
+    if (toVisit.length === 0) {
+      drawOneStackLine(-1, 0, 'black')
+      console.log("done");
+      return
+    }
+    stack.push(toVisit.pop())
+    drawOneStackLine(-2, -1, 'blue')
+  }
+
+  function drawFullStack(color) {
+    for (var i = 1; i < stack.length; i++) {
+      drawOneStackLine(i-1, i, color)
+    }
+  }
+
+  // draws a line between the indices of points on the stack
+  function drawOneStackLine(ix1, ix2, color) {
+    if (ix1 < 0) {
+      ix1 = ix1 + stack.length
+    }
+    if (ix2 < 0) {
+      ix2 += stack.length
+    }
+    line(stack[ix1], stack[ix2], color)
+  }
+
+  function addPoint(e) {
+    resetAnimation()
+    points.push({x: e.offsetX, y: e.offsetY})
+    cls()
+    drawPoints()
+  }
+
+  function drawPoints() {
+    for (var i = 0; i < points.length; i++) {
+      const {x, y} = points[i]
+      ctx.beginPath()
+      ctx.arc(x, y, 2, 0, 2 * Math.PI)
+      ctx.fillStyle = 'black';
+      ctx.fill()
+    }
+  }
+
+  function init() {
+    ctx = mainCanvas.getContext('2d')
+    cls()
+    drawPoints()
+  }
+
+  function resetPoints() {
+    points = []
+    cls()
+  }
+</script>
+<style type="text/css">
+  canvas {
+    border: 1px solid black;
+  }
+</style>
+</html>
