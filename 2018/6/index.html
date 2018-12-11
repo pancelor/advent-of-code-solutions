@@ -7,11 +7,13 @@
   <canvas id="mainCanvas" width="640", height="480">oops ur browser bad</canvas>
   <button id="resetButton">reset</button>
   <button id="nextButton">next</button>
+  <button id="fastButton">fast</button>
 </body>
 <script src="./lodash.js"></script>
 <script type="text/javascript">
   resetButton.onclick = resetPoints
   nextButton.onclick = advanceAnimation
+  fastButton.onclick = fastAnimation
   mainCanvas.onclick = addPoint
   window.onload = init
 
@@ -33,18 +35,15 @@
     ctx.fillRect(0, 0, mainCanvas.width, mainCanvas.height)
   }
 
-  function resetAnimation() {
-    stack = []
-  }
-
   function argminBy(arr, f) {
     if (arr.length === 0) {
       return undefined
     }
     argmin = 0
-    min = arr[0]
+    min = f(arr[0])
     for (var i = 1; i < arr.length; i++) {
-      elem = arr[i]
+      elem = f(arr[i])
+      // console.log({i, elem, min});
       if (elem < min) {
         argmin = i
         min = elem
@@ -75,8 +74,8 @@
   }
 
   // slope of line from p1 to p2. remember that we're using game coords
-  function slope(p1, p2) {
-    return (p2.y-p1.y) / (p2.x-p1.x)
+  function angle(p1, p2) {
+    return Math.atan2(p2.y-p1.y, p2.x-p1.x)
   }
 
   function line(p1, p2, color=undefined) {
@@ -90,18 +89,33 @@
     ctx.stroke()
   }
 
+  function fastAnimation() {
+    resetAnimation()
+    const timer = setInterval(() => {
+      if (!advanceAnimation()) {
+        clearInterval(timer)
+      }
+    }, 100)
+  }
+
+  function resetAnimation() {
+    stack = []
+    toVisit = []
+  }
+
+  // returns whether there's more to do
   function advanceAnimation() {
     cls()
     drawPoints()
-    console.log("advanceAnimation", stack)
+    // console.log("advanceAnimation", stack)
     drawFullStack('black')
 
     if (stack.length === 0) {
-      console.log("inside");
+      // console.log("inside");
       const i = argminBy(points, p=>p.y)
       const start = points[i]
       toVisit = [...points.slice(0, i), ...points.slice(i+1, points.length)]
-      toVisit = _.sortBy(toVisit, p=>slope(start, p))
+      toVisit = _.sortBy(toVisit, p=>angle(start, p))
       // console.log({stack})
       // console.log({toVisit})
 
@@ -111,22 +125,22 @@
     // console.log({toVisit})
     if (stack.length > 2) {
       const det = stackCcw(-3, -2, -1)
-      console.log({det});
       if (det < 0) {
         drawOneStackLine(-3, -1, 'red')
         const toPush = stack.pop()
         stack.pop()
         stack.push(toPush)
-        return
+        return true
       }
     }
     if (toVisit.length === 0) {
       drawOneStackLine(-1, 0, 'black')
       console.log("done");
-      return
+      return false
     }
     stack.push(toVisit.pop())
     drawOneStackLine(-2, -1, 'blue')
+    return true
   }
 
   function drawFullStack(color) {
