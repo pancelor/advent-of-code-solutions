@@ -33,7 +33,7 @@
     {x: 5*48, y: 5*48},
     {x: 8*48, y: 9*48},
   ]
-  // points = [{x: 253, y: 327}, {x: 253, y: 332}, {x: 260, y: 332}, {x: 262, y: 331}, {x: 262, y: 327}, {x: 259, y: 326}, {x: 257, y: 329}, {x: 257, y: 331}, {x: 266, y: 322}, {x: 327, y: 271}, {x: 320, y: 275}, {x: 320, y: 284}, {x: 331, y: 279}, {x: 331, y: 275}, {x: 319, y: 283}, {x: 326, y: 283}, {x: 327, y: 280}, {x: 324, y: 283}, {x: 342, y: 325}, {x: 342, y: 333}, {x: 348, y: 336}, {x: 354, y: 324}, {x: 344, y: 323}, {x: 343, y: 330}, {x: 351, y: 322}, {x: 311, y: 303},]
+  points = [{x: 349, y: 332}, {x: 265, y: 329}, {x: 327, y: 280}, {x: 264, y: 325}, {x: 253, y: 327}, {x: 253, y: 332}, {x: 260, y: 332}, {x: 262, y: 331}, {x: 262, y: 327}, {x: 259, y: 326}, {x: 257, y: 329}, {x: 257, y: 331}, {x: 266, y: 322}, {x: 327, y: 271}, {x: 320, y: 275}, {x: 320, y: 284}, {x: 331, y: 279}, {x: 331, y: 275}, {x: 319, y: 283}, {x: 326, y: 283}, {x: 327, y: 280}, {x: 324, y: 283}, {x: 342, y: 325}, {x: 342, y: 333}, {x: 348, y: 336}, {x: 354, y: 324}, {x: 344, y: 323}, {x: 343, y: 330}, {x: 351, y: 322}, {x: 311, y: 303}]
 
   let ctx
   let animTimer
@@ -99,18 +99,26 @@
     ctx.stroke()
   }
 
+  function ctxWith(prop, val, cb) {
+    const old = ctx[prop]
+    ctx[prop] = val
+    cb()
+    ctx[prop] = old
+  }
+
+
   function doubleCheck() {
     if (stack.length > 2) {
       for (var i = 0; i < stack.length; i++) {
         // console.log({i, ccw: stackCcw(i-2, i-1, i)});
-        if (stackCcw(i-2, i-1, i) < 0) {
+        if (stackCcw(i-2, i-1, i) <= 0) { // TODO: will throw error when they're colinear but maybe not the same point
           console.error("error", i-2, i-1, i)
           console.error({stack})
-          ctx.lineWidth = 10
-          drawOneStackLine(i-2, i-1, 'red')
-          drawOneStackLine(i-1, i, 'red')
-          drawOneStackLine(i, i-2, 'red')
-          ctx.lineWidth = 1
+          ctxWith('lineWidth', 10, () => {
+            drawOneStackLine(i-2, i-1, 'red')
+            drawOneStackLine(i-1, i, 'red')
+            drawOneStackLine(i, i-2, 'red')
+          })
         }
       }
     }
@@ -144,8 +152,11 @@
       // console.log("inside");
       const i = argminBy(points, p=>p.y)
       const start = points[i]
-      toVisit = _.uniq([...points.slice(0, i), ...points.slice(i+1, points.length)])
-      toVisit = _.sortBy(toVisit, p=>angle(start, p))
+      toVisit = [...points.slice(0, i), ...points.slice(i+1, points.length)]
+      toVisit = _.chain(toVisit)
+        .sortBy(p=>angle(start, p))
+        .sortedUniqBy(p=>`x${p.x}y${p.y}`) // slow
+        .value()
       // console.log({stack})
       // console.log({toVisit})
 
