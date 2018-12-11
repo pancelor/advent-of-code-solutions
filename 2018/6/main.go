@@ -48,7 +48,7 @@ func getInput() ([]point, error) {
 }
 
 func solve(data []point) (answer int, err error) {
-	debug.Println(data)
+	// debug.Println(data)
 	maxX := max(fmapPoints(func(p point) int {return p.x}, data))
 	maxY := max(fmapPoints(func(p point) int {return p.y}, data))
 	minX := -max(fmapPoints(func(p point) int {return -p.x}, data))
@@ -86,10 +86,10 @@ func solve(data []point) (answer int, err error) {
 //       TENATIVE: n = NEUTRAL
 //       UNEXPLORED: n = TENATIVE(p)
 
-	for i := 0; i < 2; i++ {
+	for i := 0; i < 4; i++ {
 		for _, p := range(data) {
 			neighbors := pointsAtDistanceFrom(i+1, p)
-			debug.Println(i, neighbors)
+			// debug.Println(i, neighbors)
 			for _, n := range(neighbors) {
 				g.setP(n)
 			}
@@ -161,7 +161,7 @@ func newGrid(minX, minY, maxX, maxY int) grid {
 	for r := 0; r < height; r++ {
 		g[r] = make([]string, width) //gType
 		for c := 0; c < width; c++ {
-			g[r][c] = "   " // gType
+			g[r][c] = " " // gType
 		}
 	}
 	return grid{
@@ -189,7 +189,7 @@ func (g grid) set(r, c int, val string) (err error) { //gType
 }
 
 func (g grid) setP(p point) error {
-	return g.set(p.y, p.x, fmt.Sprintf(" %c ", p.id)) //gType
+	return g.set(p.y, p.x, fmt.Sprintf("%c", p.id)) //gType
 }
 
 func (g grid) String() string {
