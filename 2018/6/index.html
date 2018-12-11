@@ -5,13 +5,21 @@
 </head>
 <body>
   <canvas id="mainCanvas" width="640", height="480">oops ur browser bad</canvas>
-  <button id="resetButton">reset</button>
+
+  <br/>
+
+  <button id="resetButton">clear</button>
+
+  <br/>
+
+  <button id="resetAnimButton">reset</button>
   <button id="nextButton">next</button>
   <button id="fastButton">fast</button>
 </body>
 <script src="./lodash.js"></script>
 <script type="text/javascript">
   resetButton.onclick = resetPoints
+  resetAnimButton.onclick = resetAnimation
   nextButton.onclick = advanceAnimation
   fastButton.onclick = fastAnimation
   mainCanvas.onclick = addPoint
@@ -27,6 +35,7 @@
   ]
 
   let ctx
+  let animTimer
   let stack = [] // used for animation
   let toVisit = []
 
@@ -89,18 +98,37 @@
     ctx.stroke()
   }
 
+  function doubleCheck() {
+    if (stack.length > 2) {
+      for (var i = 0; i < stack.length; i++) {
+        if (stackCcw(i-2, i-1, i) < 0) {
+          console.error("error", i-2, i-1, i)
+          console.error({stack})
+          ctx.lineWidth = 10
+          drawOneStackLine(i-2, i-1, 'red')
+          drawOneStackLine(i-1, i, 'red')
+          drawOneStackLine(i, i-2, 'red')
+          ctx.lineWidth = 1
+        }
+      }
+    }
+  }
+
   function fastAnimation() {
     resetAnimation()
-    const timer = setInterval(() => {
+    animTimer = setInterval(() => {
       if (!advanceAnimation()) {
-        clearInterval(timer)
+        clearInterval(animTimer)
       }
     }, 100)
   }
 
   function resetAnimation() {
+    clearInterval(animTimer)
     stack = []
     toVisit = []
+    cls()
+    drawPoints()
   }
 
   // returns whether there's more to do
@@ -126,21 +154,23 @@
     if (stack.length > 2) {
       const det = stackCcw(-3, -2, -1)
       if (det < 0) {
-        drawOneStackLine(-3, -1, 'red')
         const toPush = stack.pop()
         stack.pop()
         stack.push(toPush)
+        drawOneStackLine(-2, -1, 'red')
         return true
       }
     }
     if (toVisit.length === 0) {
       drawOneStackLine(-1, 0, 'black')
       console.log("done");
+      doubleCheck()
       return false
+    } else {
+      stack.push(toVisit.pop())
+      drawOneStackLine(-2, -1, 'blue')
+      return true
     }
-    stack.push(toVisit.pop())
-    drawOneStackLine(-2, -1, 'blue')
-    return true
   }
 
   function drawFullStack(color) {
