@@ -1,0 +1,20 @@
+CAPITAL(point)
+  actually same as SOLID?
+NEUTRAL()
+  equally close to two points
+SOLID(point)
+  solidified distance from a point
+TENATIVE(point)
+  tenative distance from a point (to know whether it needs to be changed to NEUTRAL)
+UNEXPLORED()
+
+for i = 0; true; i++
+  for each CAPITAL p
+    ns = neighbors at distance i from p // will this work? or will ns get too large eventually
+    for each ns n
+      switch n.type
+      CAPITAL: pass // e.g if two capitals are touching; or will happen b/c ns doesn't have a tracked "frontier"; it's just a diamond
+      NEUTRAL: pass
+      SOLID: pass
+      TENATIVE: n = NEUTRAL
+      UNEXPLORED: n = TENATIVE(p)

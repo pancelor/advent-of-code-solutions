@@ -48,62 +48,91 @@ func getInput() ([]point, error) {
 }
 
 func solve(data []point) (answer int, err error) {
+	if len(data) == 0 {
+		err = errors.New("no data")
+		return
+	}
 	// debug.Println(data)
 	maxX := max(fmapPoints(func(p point) int {return p.x}, data))
 	maxY := max(fmapPoints(func(p point) int {return p.y}, data))
-	minX := -max(fmapPoints(func(p point) int {return -p.x}, data))
-	minY := -max(fmapPoints(func(p point) int {return -p.y}, data))
+	minX := min(fmapPoints(func(p point) int {return p.x}, data))
+	minY := min(fmapPoints(func(p point) int {return p.y}, data))
 	// debug.Println(minX, minY, maxX, maxY)
 
-	g := newGrid(minX-2, minY-2, maxX+2, maxY+2)
+	minX -= 2
+	minY -= 2
+	maxX += 2
+	maxY += 2
+	g := newGrid(minX, minY, maxX, maxY)
 	for _, p := range data {
 		err = g.setP(p)
 		if err != nil {
 			return
 		}
 	}
-	fmt.Println(g)
+	// fmt.Println(g)
 
-
-// CAPITAL(point)
-//   actually same as SOLID?
-// NEUTRAL()
-//   equally close to two points
-// SOLID(point)
-//   solidified distance from a point
-// TENATIVE(point)
-//   tenative distance from a point (to know whether it needs to be changed to NEUTRAL)
-// UNEXPLORED()
-
-// for i = 0; true; i++
-//   for each CAPITAL p
-//     ns = neighbors at distance i from p
-//     for each ns n
-//       switch n.type
-//       CAPITAL: pass // e.g if two capitals are touching
-//       NEUTRAL: pass
-//       SOLID: pass
-//       TENATIVE: n = NEUTRAL
-//       UNEXPLORED: n = TENATIVE(p)
-
-	for i := 0; i < 4; i++ {
-		for _, p := range(data) {
-			neighbors := pointsAtDistanceFrom(i+1, p)
-			// debug.Println(i, neighbors)
-			for _, n := range(neighbors) {
-				g.setP(n)
+	distTo := func(r, c int, p point) int {
+		return abs(r-p.y) + abs(c-p.x)
+	}
+	area := make([]int, len(data))
+	infinite := make([]bool, len(data))
+	for r := minY; r < maxY; r++ {
+		for c := minX; c < maxX; c++ {
+			closestPointId := 0
+			closestDist := distTo(r, c, data[0])
+			isContested := false
+			for i, p := range data {
+				if i == 0 {
+					continue
+				}
+				dist := distTo(r, c, p)
+				if dist < closestDist {
+					closestPointId = i
+					closestDist = dist
+					isContested = false
+				} else if dist == closestDist {
+					isContested = true
+				}
+			}
+			if closestDist != 0 {
+				var marker byte
+				if isContested {
+					marker = '.'
+				} else {
+					area[closestPointId] += 1
+					if r == minY || r == maxY - 1 || c == minX || c == maxX - 1 {
+						infinite[closestPointId] = true
+					}
+					marker = byteToLower(data[closestPointId].id)
+				}
+				g.setP(newPoint(c, r, marker))
 			}
 		}
-		fmt.Println(g)
 	}
+	fmt.Println(g)
+	maxArea := 0
+	initd := false
+	for i, p := range(data) {
+		if !infinite[i] && (!initd || area[i] > maxArea) {
+			initd = true
+			maxArea = area[i]
+		}
+		fmt.Printf("%c: %d (inf: %v). max is %d\n", p.id, area[i], infinite[i], maxArea)
+	}
+	fmt.Println()
 
-	answer = 0
+	answer = maxArea
 	return
+}
+
+func byteToLower(b byte) byte {
+	return bytes.ToLower([]byte{b})[0]
 }
 
 func pointsAtDistanceFrom(d int, center point) []point {
 	res := make([]point, 0)
-	id := bytes.ToLower([]byte{center.id})[0]
+	id := byteToLower(center.id)
 	for dx := 0; dx < d; dx++ {
 		dy := d - dx
 		res = append(res,
@@ -132,7 +161,7 @@ func newPoint(x, y int, id byte) point {
 }
 
 func (p point) String() string {
-	return fmt.Sprintf("Point(%c: %d, %d)", p.id, p.x, p.y)
+	return fmt.Sprintf("Point(%c@%d,%d)", p.id, p.y, p.x) //row-col
 }
 
 func fmapPoints(f func(point) int, arr []point) []int {
@@ -228,4 +257,41 @@ func max(arr []int) int {
 		}
 	}
 	return res
+}
+
+func min(arr []int) int {
+	if len(arr) == 0 {
+		panic("min([]int{}) is undefined")
+	}
+	res := arr[0]
+	for _, x := range arr {
+		if x < res {
+			res = x
+		}
+	}
+	return res
+}
+
+func abs(x int) int {
+	if x < 0 {
+		return -x
+	} else {
+		return x
+	}
+}
+
+func argmin(arr []int) int {
+	if len(arr) == 0 {
+		panic("argmin([]int{}) is undefined")
+	}
+	imin := 0
+	min := arr[0]
+	for i := 1; i < len(arr); i++ {
+		elem := arr[i]
+		if elem < min {
+			imin = i
+			min = elem
+		}
+	}
+	return imin
 }
