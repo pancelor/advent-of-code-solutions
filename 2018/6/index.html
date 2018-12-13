@@ -33,21 +33,9 @@
     {x: 5*48, y: 5*48},
     {x: 8*48, y: 9*48},
   ]
-  points = [
-    {x:10, y:10},
-    {x:50, y:10},
-    {x:100, y:10},
-    {x:100, y:50},
-    {x:100, y:100},
-    {x:50, y:100},
-    {x:10, y:100},
-    {x:10, y:50},
-  ]
 
   let ctx
-  let animTimer
-  let stack = [] // used for animation
-  let toVisit = []
+  let animation, animTimer
 
   function cls() {
     ctx.fillStyle = 'lightgray';
@@ -79,19 +67,6 @@
     return -((p2.x - p1.x)*(p3.y - p1.y) - (p2.y - p1.y)*(p3.x - p1.x))
   }
 
-  function stackCcw(ix1, ix2, ix3) {
-    if (ix1 < 0) {
-      ix1 = ix1 + stack.length
-    }
-    if (ix2 < 0) {
-      ix2 += stack.length
-    }
-    if (ix3 < 0) {
-      ix3 += stack.length
-    }
-    return ccw(stack[ix1], stack[ix2], stack[ix3])
-  }
-
   // slope of line from p1 to p2. remember that we're using game coords
   function angle(p1, p2) {
     return Math.atan2(p2.y-p1.y, p2.x-p1.x)
@@ -116,22 +91,35 @@
   }
 
 
-  function doubleCheck() {
-    if (stack.length > 2) {
-      for (var i = 0; i < stack.length; i++) {
-        const det = stackCcw(i-2, i-1, i)
+  function doubleCheck(hull) {
+    const get = (ix) => arrGet(hull, ix)
+
+    if (hull.length > 2) {
+      for (var i = 0; i < hull.length; i++) {
+        const det = ccw(get(i-2), get(i-1), get(i))
         if (det < 0) {
+          for (var j = 0; j < i-2; i++) {
+            line(get(j-1), get(j), 'red')
+          }
           console.error("error", i-2, i-1, i, det)
-          console.error({stack})
+          console.error({hull})
           ctxWith('lineWidth', 10, () => {
-            drawOneStackLine(i-2, i-1, 'red')
-            drawOneStackLine(i-1, i, 'red')
-            drawOneStackLine(i, i-2, 'red')
+            line(get(i-2), get(i-1), 'red')
+            line(get(i-1), get(i), 'red')
+            line(get(i), get(i-2), 'red')
           })
+          return false
         }
       }
     }
+    return true
   }
+
+  // function assert(b) {
+  //   if (!b) {
+  //     console.error("assertion failed")
+  //   }
+  // }
 
   function fastAnimation() {
     resetAnimation()
@@ -143,73 +131,172 @@
   }
 
   function resetAnimation() {
+    animation = undefined
     clearInterval(animTimer)
-    stack = []
-    toVisit = []
     cls()
     drawPoints()
   }
 
-  // returns whether there's more to do
-  function advanceAnimation() {
-    cls()
-    drawPoints()
-    // console.log("advanceAnimation", stack)
-    drawFullStack('black')
-
-    if (stack.length === 0) {
-      // console.log("inside");
-      const i = argminBy(points, p=>p.y)
-      const start = points[i]
-      toVisit = [...points.slice(0, i), ...points.slice(i+1, points.length)]
-      toVisit = _.chain(toVisit)
-        .sortBy(p=>angle(start, p))
-        .sortedUniqBy(p=>`x${p.x}y${p.y}`) // slow
-        .value()
-      // console.log({stack})
-      // console.log({toVisit})
-
-      stack.push(start)
-    }
-    // console.log({stack})
-    // console.log({toVisit})
-    if (stack.length > 2) {
-      const det = stackCcw(-3, -2, -1)
-      if (det < 0) {
-        const toPush = stack.pop()
-        stack.pop()
-        stack.push(toPush)
-        drawOneStackLine(-2, -1, 'red')
-        return true
+  function ensureAnimation() {
+    if (!animation) {
+      const res = calculateHull()
+      animation = res.anim
+      if (!doubleCheck(res.hull)) {
+        animation = false
       }
     }
-    if (toVisit.length === 0) {
-      drawOneStackLine(-1, 0, 'black')
-      console.log("done");
-      doubleCheck()
+  }
+
+  // returns whether there's more work to do
+  function advanceAnimation() {
+    ensureAnimation()
+    if (animation.done()) {
       return false
+    }
+
+    const { type, stack } = animation.next()
+    const get = (ix) => arrGet(stack, ix)
+    cls()
+    drawPoints()
+    if (type === "STACK_PUSH" || type === "CONCAVITY_REMOVED") {
+      for (var i = 1; i < stack.length - 1; i++) {
+        line(get(i-1), get(i), 'black')
+      }
+      line(get(-2), get(-1), 'blue')
+    } else if (type === "REMOVING_CONCAVITY") {
+      for (var i = 1; i < stack.length - 2; i++) {
+        line(get(i-1), get(i), 'black')
+      }
+      line(get(-3), get(-2), 'red')
+      line(get(-2), get(-1), 'red')
+      line(get(-3), get(-1), 'blue')
+    } else if (type === "DONE") {
+      for (var i = 1; i < stack.length; i++) {
+        line(get(i-1), get(i), 'black')
+      }
     } else {
-      stack.push(toVisit.pop())
-      drawOneStackLine(-2, -1, 'blue')
+      console.error(`Bad animation event type "${type}"`)
+      return false
+    }
+    return true
+  }
+
+  class Animation {
+    constructor(events) {
+      this.events = events
+      this.i = 0
+    }
+
+    done() {
+      return this.i === this.events.length
+    }
+
+    next() {
+      const { type, stack } = this.events[this.i]
+      this.i += 1
+      return { type, stack }
+    }
+  }
+
+  function arrGet(arr, ix) {
+    if (ix < 0) {
+      ix = ix + arr.length
+    }
+    return arr[ix]
+  }
+
+  // * calculates the convex hull of the points in `points`
+  // repeated points will be removed
+  // colinear hull points will *not* be removed
+  // * returns (hull, anim) where:
+  //   * hull is the convex hull of points, in draw order.
+  //   the starting point will be included again at the end
+  //   * anim is an "animation" (a log of events to be used to draw the algorithm)
+  function calculateHull() {
+    if (points.length < 3) {
+      return
+    }
+    const eventLog = []
+    let stack = []
+
+    // helpers
+
+    const stackGet = (ix) => arrGet(stack, ix)
+
+    function stackPush(p) {
+      stack.push(p)
+      eventLog.push({
+        type: "STACK_PUSH",
+        stack: [...stack],
+      })
+    }
+
+    // Looks for a concavity and removes it.
+    // Returns whether it removed a concavity
+    function removeConcavity() {
+      const p1 = stackGet(-3)
+      const p2 = stackGet(-2)
+      const p3 = stackGet(-1)
+      if (stack.length < 3 || ccw(p1, p2, p3) >= 0) {
+        return false
+      }
+
+      eventLog.push({
+        type: "REMOVING_CONCAVITY",
+        stack: [...stack],
+      })
+      stack.pop() // p3; put it back later
+      stack.pop() // p2, want it gone
+      stack.push(p3)
+      eventLog.push({
+        type: "CONCAVITY_REMOVED",
+        stack: [...stack],
+      })
       return true
     }
+
+    function done() {
+      eventLog.push({
+        type: "DONE",
+        stack: [...stack],
+      })
+    }
+
+    // algorithm
+
+    const i = argminBy(points, p=>p.y)
+    const start = points[i]
+    // console.log({points, i});
+    const toVisit = _.chain(points)
+      // .tap(arr => console.log({arr}))
+      .filter((e, ix) => ix !== i)
+      // .tap(arr => console.log({arr}))
+      .sortBy(p=>angle(start, p))
+      .sortedUniqBy(p=>`${p.x},${p.y}`) // slow?
+      .value()
+    stack.push(start) // we dont want an event for this
+
+    // console.log({stack})
+    // console.log({toVisit})
+
+    while (toVisit.length > 0) {
+      stackPush(toVisit.pop()) // TODO points.len
+      while (removeConcavity()) {
+      }
+    }
+    stackPush(start)
+    done()
+    return { hull: stack, anim: new Animation(eventLog) }
   }
 
-  function drawFullStack(color) {
-    for (var i = 1; i < stack.length; i++) {
-      drawOneStackLine(i-1, i, color)
+  function drawPath(arr, {color, closed=false}) {
+    const get = (ix) => arrGet(arr, ix)
+    for (var i = 1; i < arr.length; i++) {
+      line(get(i-1), get(i), color)
     }
-  }
-
-  // draws a line between the indices of points on the stack
-  function drawOneStackLine(ix1, ix2, color) {
-    if (ix1 < 0) {
-      ix1 = ix1 + stack.length
+    if (closed) {
+      line(get(-1), get(0), color)
     }
-    if (ix2 < 0) {
-      ix2 += stack.length
-    }
-    line(stack[ix1], stack[ix2], color)
   }
 
   function addPoint(e) {
