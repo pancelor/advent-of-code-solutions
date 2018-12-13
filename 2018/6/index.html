@@ -33,7 +33,6 @@
     {x: 5*48, y: 5*48},
     {x: 8*48, y: 9*48},
   ]
-  points = [{x: 349, y: 332}, {x: 265, y: 329}, {x: 327, y: 280}, {x: 264, y: 325}, {x: 253, y: 327}, {x: 253, y: 332}, {x: 260, y: 332}, {x: 262, y: 331}, {x: 262, y: 327}, {x: 259, y: 326}, {x: 257, y: 329}, {x: 257, y: 331}, {x: 266, y: 322}, {x: 327, y: 271}, {x: 320, y: 275}, {x: 320, y: 284}, {x: 331, y: 279}, {x: 331, y: 275}, {x: 319, y: 283}, {x: 326, y: 283}, {x: 327, y: 280}, {x: 324, y: 283}, {x: 342, y: 325}, {x: 342, y: 333}, {x: 348, y: 336}, {x: 354, y: 324}, {x: 344, y: 323}, {x: 343, y: 330}, {x: 351, y: 322}, {x: 311, y: 303}]
 
   let ctx
   let animation, animTimer
@@ -99,7 +98,7 @@
       for (var i = 2; i < hull.length; i++) {
         const det = ccw(get(i-2), get(i-1), get(i))
         // console.log({i, det});
-        if (det <= 0) {
+        if (det < 0) {
           for (var j = 0; j < i-2; j++) {
             line(get(j-1), get(j), 'black')
           }
@@ -278,7 +277,7 @@
       .filter((e, ix) => ix !== i)
       // .tap(arr => console.log({arr}))
       .sortBy(p=>angle(start, p))
-      // .sortedUniqBy(p=>`${p.x},${p.y}`) // slow?
+      .sortedUniqBy(p=>`${p.x},${p.y}`) // slow?
       .value()
     stack.push(start) // we dont want an event for this
 
