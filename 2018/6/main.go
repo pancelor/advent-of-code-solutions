@@ -59,10 +59,10 @@ func solve(data []point) (answer int, err error) {
 	minY := min(fmapPoints(func(p point) int {return p.y}, data))
 	// debug.Println(minX, minY, maxX, maxY)
 
-	minX -= 1 // need to be at least 1 b/c offbyone memes, but i don't think they need to be any bigger... not sure though (might make `inifinite[]` wrong later)
-	minY -= 1
-	maxX += 1
-	maxY += 1
+	minX -= 10 // need to be at least 1 b/c offbyone memes, but i don't think they need to be any bigger... not sure though (might make `inifinite[]` wrong later)
+	minY -= 10
+	maxX += 10
+	maxY += 10
 	g := newGrid(minX, minY, maxX, maxY)
 	for _, p := range data {
 		err = g.setP(p)
@@ -75,56 +75,33 @@ func solve(data []point) (answer int, err error) {
 	distTo := func(r, c int, p point) int {
 		return abs(r-p.y) + abs(c-p.x)
 	}
-	area := make([]int, len(data))
-	infinite := make([]bool, len(data))
+	area := 0
+	MAX_DIST := 10000
 	for r := minY; r < maxY; r++ {
 		for c := minX; c < maxX; c++ {
-			closestPointId := 0
-			closestDist := distTo(r, c, data[0])
-			isContested := false
-			for i, p := range data {
-				if i == 0 {
-					continue
-				}
+			totalDist := 0
+			coincides := false
+			for _, p := range data {
 				dist := distTo(r, c, p)
-				if dist < closestDist {
-					closestPointId = i
-					closestDist = dist
-					isContested = false
-				} else if dist == closestDist {
-					isContested = true
+				if dist == 0 {
+					coincides = true
+				}
+				totalDist += dist
+				if totalDist >= MAX_DIST {
+					break
 				}
 			}
-			if closestDist == 0 {
-				area[closestPointId] += 1
-			} else {
-				var marker byte
-				if isContested {
-					marker = '.'
-				} else {
-					area[closestPointId] += 1
-					if r == minY || r == maxY - 1 || c == minX || c == maxX - 1 {
-						infinite[closestPointId] = true
-					}
-					marker = byteToLower(data[closestPointId].id)
+			if totalDist < MAX_DIST {
+				area += 1
+				if !coincides {
+					g.setP(newPoint(c, r, '#'))
 				}
-				g.setP(newPoint(c, r, marker))
 			}
 		}
 	}
 	fmt.Println(g)
-	maxArea := 0
-	initd := false
-	for i, p := range(data) {
-		if !infinite[i] && (!initd || area[i] > maxArea) {
-			initd = true
-			maxArea = area[i]
-		}
-		fmt.Printf("%c: %d (inf: %v). max is %d\n", p.id, area[i], infinite[i], maxArea)
-	}
-	fmt.Println()
 
-	answer = maxArea
+	answer = area
 	return
 }
 
