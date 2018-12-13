@@ -59,10 +59,10 @@ func solve(data []point) (answer int, err error) {
 	minY := min(fmapPoints(func(p point) int {return p.y}, data))
 	// debug.Println(minX, minY, maxX, maxY)
 
-	minX -= 2
-	minY -= 2
-	maxX += 2
-	maxY += 2
+	minX -= 1 // need to be at least 1 b/c offbyone memes, but i don't think they need to be any bigger... not sure though (might make `inifinite[]` wrong later)
+	minY -= 1
+	maxX += 1
+	maxY += 1
 	g := newGrid(minX, minY, maxX, maxY)
 	for _, p := range data {
 		err = g.setP(p)
@@ -95,7 +95,9 @@ func solve(data []point) (answer int, err error) {
 					isContested = true
 				}
 			}
-			if closestDist != 0 {
+			if closestDist == 0 {
+				area[closestPointId] += 1
+			} else {
 				var marker byte
 				if isContested {
 					marker = '.'
