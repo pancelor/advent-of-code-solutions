@@ -8,19 +8,17 @@
 
   <br/>
 
-  <button id="resetButton">clear</button>
+  <button id="clearButton">clear</button>
 
   <br/>
 
-  <button id="resetAnimButton">reset</button>
   <button id="nextButton">next</button>
   <button id="fastButton">fast</button>
 </body>
 <script src="./lodash.js"></script>
 <script type="text/javascript">
-  resetButton.onclick = resetPoints
-  resetAnimButton.onclick = resetAnimation
-  nextButton.onclick = advanceAnimation
+  clearButton.onclick = () => {clearPoints(); resetAnimation()}
+  nextButton.onclick = () => {clearInterval(animTimer); advanceAnimation()}
   fastButton.onclick = fastAnimation
   mainCanvas.onclick = addPoint
   window.onload = init
@@ -123,8 +121,8 @@
   // }
 
   function fastAnimation() {
-    resetAnimation()
     animTimer = setInterval(() => {
+      console.log('tick');
       if (!advanceAnimation()) {
         clearInterval(animTimer)
       }
@@ -327,7 +325,7 @@
     drawPoints()
   }
 
-  function resetPoints() {
+  function clearPoints() {
     points = []
     cls()
   }
