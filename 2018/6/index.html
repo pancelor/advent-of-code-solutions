@@ -147,7 +147,7 @@
         return false
       }
     }
-    return true
+    return !!animation
   }
 
   // returns whether there's more work to do
@@ -219,7 +219,7 @@
   //   * anim is an "animation" (a log of events to be used to draw the algorithm)
   function calculateHull() {
     if (points.length < 3) {
-      return
+      return { hull: [...points], anim: undefined }
     }
     const eventLog = []
     let stack = []
