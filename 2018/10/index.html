@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>visualizer</title>
+</head>
+<body>
+  <canvas id="mainCanvas" width="640", height="480">oops ur browser bad</canvas>
+
+  <br/>
+
+  <input id="timeInput" type="number" value="0" min="0" />
+
+</body>
+<script src="./lodash.js"></script>
+<script src="./data.js"></script>
+<script type="text/javascript">
+  var width, height, backBuffer
+
+  window.onload = function init() {
+    width = _.chain(data).map('X').max().value()
+    height = _.chain(data).map('Y').max().value()
+
+    xmin = _.chain(data).map('X').min().value()
+    ymin = _.chain(data).map('Y').min().value()
+    console.log(xmin, ymin);
+    
+    
+    ctx = mainCanvas.getContext('2d')
+
+    backBuffer = document.createElement('canvas');
+
+    backBuffer.width = width
+    backBuffer.height = height
+
+    ctx.scale(mainCanvas.width/width, mainCanvas.height/height)
+
+    cls()
+    drawPoints()
+  }
+
+  timeInput.addEventListener('input', (e) => {
+    const t = parseInt(timeInput.value);
+    if (t && t != null) {
+      cls()
+      drawPoints(t)
+    }
+  })
+
+  function drawPoints(t=0) {
+    const imageData = ctx.createImageData(width, height);
+    for (let p of data) {
+      const x = p.X + p.Dx*t
+      const y = p.Y + p.Dy*t
+      if (0 <= x && x < width && 0 <= y && y < height) {
+        setPixel(imageData, x, y)
+      }
+    }
+    backBuffer.getContext("2d").putImageData(imageData, 0, 0)
+    ctx.drawImage(backBuffer, 0, 0)
+  }
+
+  function getColorIndicesForCoord(x, y) {
+    const red = y * (width * 4) + x * 4;
+    return [red, red + 1, red + 2, red + 3];
+  };
+  
+  function setPixel(imageData, x, y, on=true) {
+    setPixelRGBA(imageData, x, y, 0, 0, 0, on ? 255 : 0)
+  }
+    
+  function setPixelRGBA(imageData, x, y, r, g, b, a) {
+    const [redIndex, greenIndex, blueIndex, alphaIndex] = getColorIndicesForCoord(x, y);
+    imageData.data[redIndex] = r
+    imageData.data[greenIndex] = g
+    imageData.data[blueIndex] = b
+    imageData.data[alphaIndex] = a
+  }
+
+  function cls() {
+    ctx.fillStyle = 'lightgray';
+    ctx.fillRect(0, 0, mainCanvas.width, mainCanvas.height)
+  }
+
+</script>
+<style type="text/css">
+  canvas {
+    border: 1px solid black;
+  }
+</style>
+</html>

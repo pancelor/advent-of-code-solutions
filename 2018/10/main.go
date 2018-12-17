@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -11,17 +12,22 @@ import (
 func main() {
 	log.SetFlags(0)
 	log.SetPrefix("debug: ")
-	reader, err := os.Open("2018/10/in.txt")
+	// reader, err := os.Open("./in.txt")
+	// if err != nil {
+	// 	panic(err)
+	// }
+	data, err := getInput(os.Stdin)
 	if err != nil {
 		panic(err)
 	}
-	data, err := getInput(reader)
+	outf, err := os.Create("./data.js")
 	if err != nil {
 		panic(err)
 	}
-	commands := newCommandStream(os.Stdin)
-	answer, err := solve(data, commands)
-	fmt.Println(answer)
+	err = dump(data, outf)
+	if err != nil {
+		panic(err)
+	}
 }
 
 func getInput(in io.Reader) (data []particle, err error) {
@@ -30,7 +36,7 @@ func getInput(in io.Reader) (data []particle, err error) {
 	for scanner.Scan() {
 		text := scanner.Text()
 		p := particle{}
-		_, err = fmt.Sscanf(text, "position=<%d,%d> velocity=<%d,%d>", &p.x, &p.y, &p.dx, &p.dy)
+		_, err = fmt.Sscanf(text, "position=<%d,%d> velocity=<%d,%d>", &p.X, &p.Y, &p.Dx, &p.Dy)
 		if err != nil {
 			return
 		}
@@ -40,11 +46,20 @@ func getInput(in io.Reader) (data []particle, err error) {
 	return
 }
 
-func solve(data []particle, commands chan command) (answer int, err error) {
-	for _, p := range data {
-		log.Println(p)
+func dump(data []particle, f *os.File) error {
+	// for _, p := range data {
+	// 	log.Println(p)
+	// }
+	bytes, err := json.Marshal(data)
+	if err != nil {
+		return err
 	}
-	return
+	_, err = f.WriteString("window.data = ")
+	if err != nil {
+		return err
+	}
+	_, err = f.Write(bytes)
+	return err
 }
 
 type command struct {
@@ -52,15 +67,15 @@ type command struct {
 }
 
 type particle struct {
-	x, y   int
-	dx, dy int
+	X, Y   int
+	Dx, Dy int
 }
 
-func (p *particle) Advance() {
-	p.x += p.dx
-	p.y += p.dy
-}
+// func (p *particle) Advance() {
+// 	p.x += p.dx
+// 	p.y += p.dy
+// }
 
 func (p *particle) String() string {
-	return fmt.Sprintf("{x=(%3d,%3d),v=(%3d,%3d)}", p.x, p.y, p.dx, p.dy)
+	return fmt.Sprintf("{x=(%3d,%3d),v=(%3d,%3d)}", p.X, p.Y, p.Dx, p.Dy)
 }
