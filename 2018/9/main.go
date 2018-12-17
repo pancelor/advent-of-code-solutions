@@ -1,5 +1,3 @@
-// part 1 is done; haven't tried submitting yet
-
 package main
 
 import (
