@@ -1,11 +1,11 @@
-// part 1 is done; haven't tried submitting yet
-
 package main
 
 import (
 	"fmt"
 	"io"
+	"log"
 	"os"
+	"strings"
 )
 
 // const instring = "2 3 0 3 10 11 12 1 1 0 1 99 2 1 1 2"
@@ -29,9 +29,18 @@ func solve(in io.Reader) (answer int, err error) {
 	if err != nil {
 		return
 	}
-	// log.Printf("%#v\n", root)
-	answer = reduceNode(func(reducedChildren []int, metadata []int) int {
-		return sum(reducedChildren) + sum(metadata)
+	fmt.Printf("%s\n", root)
+	answer = reduceNode(func(reducedChildren []int, metadata []int) (res int) {
+		// if len(reducedChildren) == 0 {
+		// 	res = sum(metadata)
+		// } else {
+		// 	for _, m := range metadata {
+		// 		res += reducedChildren[m-1]
+		// 	}
+		// }
+		res = sum(reducedChildren) + sum(metadata)
+		log.Printf("reduce(%v, %v)=%v", reducedChildren, metadata, res)
+		return
 	}, root)
 	return
 }
@@ -47,8 +56,8 @@ func sum(a []int) int {
 // fn takes 1: reduced children and 2: metadata
 func reduceNode(fn func([]int, []int) int, n Node) int {
 	results := make([]int, len(n.children))
-	for _, c := range n.children {
-		results = append(results, reduceNode(fn, c))
+	for i, c := range n.children {
+		results[i] = reduceNode(fn, c)
 	}
 	return fn(results, n.metadata)
 }
@@ -92,4 +101,47 @@ func NewNode(nChildren, nMetadata int) Node {
 		children: make([]Node, nChildren),
 		metadata: make([]int, nMetadata),
 	}
+}
+
+var indent int
+
+type indentPrinter struct {
+	f io.Writer
+}
+
+func newIndentPrinter(f io.Writer) indentPrinter {
+	return indentPrinter{f: f}
+}
+
+func (p *indentPrinter) Printf(s string, a ...interface{}) {
+	fmt.Fprintf(p.f, s, a...)
+}
+
+func (p *indentPrinter) Println(s ...interface{}) {
+	fmt.Fprintln(p.f, s...)
+	fmt.Fprintf(p.f, strings.Repeat("\t", indent))
+}
+
+func (n Node) String() string {
+	var s strings.Builder
+	p := newIndentPrinter(io.Writer(&s))
+	p.Printf("Node{{")
+	if len(n.children) > 0 {
+		indent += 1
+		for _, c := range n.children {
+			p.Println()
+			p.Printf("%s", c)
+		}
+		indent -= 1
+		p.Println()
+	}
+	p.Printf("}[")
+	for i, m := range n.metadata {
+		if i != 0 {
+			p.Printf(" ")
+		}
+		p.Printf("%d", m)
+	}
+	p.Printf("]}")
+	return s.String()
 }
