@@ -1,3 +1,5 @@
+// TODO: part 2 (huge input)
+
 package main
 
 import (
