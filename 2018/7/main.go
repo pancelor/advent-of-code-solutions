@@ -1,10 +1,12 @@
+// TODO: part 2
+
 package main
 
 import (
 	"bufio"
-	debug "log"
-	"io"
 	"fmt"
+	"io"
+	debug "log"
 	"os"
 	"sort"
 	"strings"
@@ -61,7 +63,7 @@ func solve(in io.Reader) (answer string, err error) {
 		for _, v := range data {
 			ready[v.b] = false
 			postreqs[v.a][v.b] = true // once set to true this will never be set false
-			prereqs[v.b][v.a] = true // these _will_ be set back to false as prerequisites complete
+			prereqs[v.b][v.a] = true  // these _will_ be set back to false as prerequisites complete
 		}
 	}
 
@@ -106,6 +108,7 @@ func solve(in io.Reader) (answer string, err error) {
 type connections map[byte]map[byte]bool
 
 type sortBytes []byte
+
 func (s sortBytes) Less(i, j int) bool {
 	return s[i] < s[j]
 }
@@ -116,7 +119,7 @@ func (s sortBytes) Len() int {
 	return len(s)
 }
 
-func arrFromSet(c map[byte]bool) []byte{
+func arrFromSet(c map[byte]bool) []byte {
 	arr := make([]byte, 0)
 	for k, v := range c {
 		if v {
@@ -163,7 +166,7 @@ func debugConnections(c connections) {
 }
 
 // "<a> must be finished before <b> can begin."
-type req struct{
+type req struct {
 	a, b byte
 }
 
