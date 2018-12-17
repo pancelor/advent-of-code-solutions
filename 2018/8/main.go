@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"strings"
 )
@@ -29,17 +28,19 @@ func solve(in io.Reader) (answer int, err error) {
 	if err != nil {
 		return
 	}
-	fmt.Printf("%s\n", root)
+	// fmt.Printf("%s\n", root)
 	answer = reduceNode(func(reducedChildren []int, metadata []int) (res int) {
-		// if len(reducedChildren) == 0 {
-		// 	res = sum(metadata)
-		// } else {
-		// 	for _, m := range metadata {
-		// 		res += reducedChildren[m-1]
-		// 	}
-		// }
-		res = sum(reducedChildren) + sum(metadata)
-		log.Printf("reduce(%v, %v)=%v", reducedChildren, metadata, res)
+		// log.Printf("reduce(%v, %v)=?", reducedChildren, metadata)
+		if len(reducedChildren) == 0 {
+			res = sum(metadata)
+		} else {
+			for _, m := range metadata {
+				if m-1 < len(reducedChildren) {
+					res += reducedChildren[m-1]
+				}
+			}
+		}
+		// log.Printf("reduce(%v, %v)=%v", reducedChildren, metadata, res)
 		return
 	}, root)
 	return
