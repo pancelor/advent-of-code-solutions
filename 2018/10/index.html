@@ -9,76 +9,82 @@
   <br/>
 
   <input id="timeInput" type="number" value="0" min="0" />
+  <button id="resizeButton">Resize</button>
 
 </body>
 <script src="./lodash.js"></script>
 <script src="./data.js"></script>
 <script type="text/javascript">
-  var width, height, backBuffer
-
+  var xmin, xmax, ymin, ymax, width, height
   window.onload = function init() {
-    width = _.chain(data).map('X').max().value()
-    height = _.chain(data).map('Y').max().value()
+    timeInput.focus()
 
-    xmin = _.chain(data).map('X').min().value()
-    ymin = _.chain(data).map('Y').min().value()
-    console.log(xmin, ymin);
-    
-    
     ctx = mainCanvas.getContext('2d')
+    setBounds(0)
+  }
 
-    backBuffer = document.createElement('canvas');
-
-    backBuffer.width = width
-    backBuffer.height = height
-
+  function setBounds(t=0) {
+    d2 = simulate(t)
+    xmin = _.chain(d2).map('x').min().value()
+    xmax = _.chain(d2).map('x').max().value()
+    ymin = _.chain(d2).map('y').min().value()
+    ymax = _.chain(d2).map('y').max().value()
+    width = xmax-xmin+1
+    height = ymax-ymin+1
+    
+    // console.log({xmin, xmax, ymin, ymax, width, height});
+    
+    ctx.setTransform(1,0,0,1,0,0)
     ctx.scale(mainCanvas.width/width, mainCanvas.height/height)
+    ctx.translate(-xmin, -ymin)
 
     cls()
-    drawPoints()
+        
+    ctx.fillStyle = "green"
+    ctx.fillRect(xmin+1, ymin+1, width-2, height-2)
+
+    drawPoints(currentTime())
+  }
+
+  function currentTime() {
+    return parseInt(timeInput.value);
   }
 
   timeInput.addEventListener('input', (e) => {
-    const t = parseInt(timeInput.value);
-    if (t && t != null) {
+    const t = currentTime()
+    if (t != null) {
       cls()
       drawPoints(t)
     }
   })
 
-  function drawPoints(t=0) {
-    const imageData = ctx.createImageData(width, height);
-    for (let p of data) {
-      const x = p.X + p.Dx*t
-      const y = p.Y + p.Dy*t
-      if (0 <= x && x < width && 0 <= y && y < height) {
-        setPixel(imageData, x, y)
-      }
-    }
-    backBuffer.getContext("2d").putImageData(imageData, 0, 0)
-    ctx.drawImage(backBuffer, 0, 0)
+  resizeButton.onclick = (e) => {
+    setBounds(currentTime())
+    timeInput.focus()
   }
 
-  function getColorIndicesForCoord(x, y) {
-    const red = y * (width * 4) + x * 4;
-    return [red, red + 1, red + 2, red + 3];
-  };
+  function simulate(t=0) {
+    return data.map(({X, Y, Dx, Dy}) => ({x: X+Dx*t, y: Y+Dy*t}))
+  }
+
+  function drawPoints(t=0) {
+    for (let {x, y} of simulate(t)) {
+      // if (0 <= x && x < width && 0 <= y && y < height) {
+      setPixel(x, y)
+      // }
+    }
+  }
   
-  function setPixel(imageData, x, y, on=true) {
-    setPixelRGBA(imageData, x, y, 0, 0, 0, on ? 255 : 0)
+  function setPixel(x, y, on=true) {
+    ctx.fillStyle = 'black';
+    w = Math.max(1, width/100)
+    h = Math.max(1, height/100)
+    ctx.fillRect(x, y, w, h)
   }
     
-  function setPixelRGBA(imageData, x, y, r, g, b, a) {
-    const [redIndex, greenIndex, blueIndex, alphaIndex] = getColorIndicesForCoord(x, y);
-    imageData.data[redIndex] = r
-    imageData.data[greenIndex] = g
-    imageData.data[blueIndex] = b
-    imageData.data[alphaIndex] = a
-  }
-
   function cls() {
     ctx.fillStyle = 'lightgray';
-    ctx.fillRect(0, 0, mainCanvas.width, mainCanvas.height)
+    ctx.fillRect(xmin, ymin, width, height)
   }
 
 </script>

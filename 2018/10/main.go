@@ -13,7 +13,7 @@ func main() {
 	log.SetFlags(0)
 	log.SetPrefix("debug: ")
 	// reader, err := os.Open("./in.txt")
-	// if err != nil {
+	// if err != nil {gu
 	// 	panic(err)
 	// }
 	data, err := getInput(os.Stdin)
@@ -47,8 +47,8 @@ func getInput(in io.Reader) (data []particle, err error) {
 }
 
 func dump(data []particle, f *os.File) error {
-	// for _, p := range data {
-	// 	log.Println(p)
+	// for i, _ := range data {
+	// 	data[i].X += 2
 	// }
 	bytes, err := json.Marshal(data)
 	if err != nil {
