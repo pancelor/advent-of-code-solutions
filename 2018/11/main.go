@@ -67,26 +67,31 @@ func solve(sn int) (answer string, err error) {
 
 	rmax := 0
 	cmax := 0
-	max := g.val3by3at(0, 0)
+	Dmax := 1
+	max := g.valDbyDat(0, 0, 1)
 	for r := 0; r < MAX_Y; r++ {
 		for c := 0; c < MAX_X; c++ {
-			val := g.val3by3at(r, c)
-			if val > max {
-				max = val
-				rmax = r
-				cmax = c
+			fmt.Printf("r,c=%d,%d\n", r, c)
+			for D := 1; r+D < MAX_Y && c+D < MAX_X; D++ {
+				val := g.valDbyDat(r, c, D)
+				if val > max {
+					max = val
+					rmax = r
+					cmax = c
+					Dmax = D
+				}
 			}
 		}
 	}
 
-	answer = fmt.Sprintf("%d,%d", cmax+1, rmax+1)
+	answer = fmt.Sprintf("%d,%d,%d", cmax+1, rmax+1, Dmax)
 	return
 }
 
-func (g *grid) val3by3at(r, c int) (val int) {
+func (g *grid) valDbyDat(r, c, D int) (val int) {
 	// inefficient since we can incrementally compute this as we go
-	for dr := 0; dr < 3; dr++ {
-		for dc := 0; dc < 3; dc++ {
+	for dr := 0; dr < D; dr++ {
+		for dc := 0; dc < D; dc++ {
 			val += g.at(r+dr, c+dc)
 		}
 	}
