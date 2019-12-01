@@ -48,5 +48,15 @@ func solve(reader io.Reader) (string, error) {
 }
 
 func fuelForMass(mass int) int {
+	total := 0
+	for mass > 0 {
+		fuel := fuelForMassSimple(mass)
+		total += fuel
+		mass = fuel
+	}
+	return total
+}
+
+func fuelForMassSimple(mass int) int {
 	return (mass / 3) - 2
 }

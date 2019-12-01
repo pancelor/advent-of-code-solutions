@@ -2,3 +2,4 @@ in.txt
 *.exe
 /2018/10/data.js
 lodash.js
+.vscode
