@@ -28,7 +28,7 @@ func main() {
 }
 
 func solve(reader io.Reader) (string, error) {
-	counter := 0
+	total := 0
 	scanner := bufio.NewScanner(reader)
 	for scanner.Scan() {
 		v := scanner.Text()
@@ -37,20 +37,25 @@ func solve(reader io.Reader) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		counter += fuelForMass(mass)
+		total += fuelForMassSimple(mass)
 	}
 	err := scanner.Err()
 	if err != nil {
 		return "", err
 	}
 
-	return strconv.Itoa(counter), nil
+	total += fuelForMass(total) // fuel itself has mass
+
+	return strconv.Itoa(total), nil
 }
 
 func fuelForMass(mass int) int {
 	total := 0
-	for mass > 0 {
+	for {
 		fuel := fuelForMassSimple(mass)
+		if fuel <= 0 {
+			break
+		}
 		total += fuel
 		mass = fuel
 	}
