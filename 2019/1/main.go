@@ -37,14 +37,12 @@ func solve(reader io.Reader) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		total += fuelForMassSimple(mass)
+		total += fuelForMass(mass)
 	}
 	err := scanner.Err()
 	if err != nil {
 		return "", err
 	}
-
-	total += fuelForMass(total) // fuel itself has mass
 
 	return strconv.Itoa(total), nil
 }
