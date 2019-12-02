@@ -9,12 +9,24 @@ import (
 	"strings"
 )
 
-func solve(mem []int) (interface{}, error) {
-	mem[1] = 12
-	mem[2] = 2
+func solve(memTemplate []int) (interface{}, error) {
+	targetRes := 19690720
+	for noun := 0; noun < len(memTemplate); noun++ {
+		for verb := 0; verb < len(memTemplate); verb++ {
+			mem := dupmem(memTemplate)
+			mem[1] = noun
+			mem[2] = verb
 
-	res, err := run(mem)
-	return res, err
+			res, err := run(mem)
+			if err != nil {
+				continue
+			}
+			if res == targetRes {
+				return 100*noun + verb, nil
+			}
+		}
+	}
+	return nil, fmt.Errorf("No combination found")
 }
 
 func run(mem []int) (int, error) {
@@ -48,6 +60,12 @@ func run(mem []int) (int, error) {
 	}
 
 	return mem[0], nil
+}
+
+func dupmem(mem []int) []int {
+	res := make([]int, len(mem))
+	copy(res, mem)
+	return res
 }
 
 func chomp(mem []int, pc *int) int {
