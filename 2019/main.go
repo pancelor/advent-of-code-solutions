@@ -3,10 +3,41 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"io"
-	debug "log"
 	"os"
+	"strconv"
 )
+
+func solve(lines []string) (interface{}, error) {
+	for _, line := range lines {
+		v, err := strconv.Atoi(line)
+		if err != nil {
+			return nil, err
+		}
+
+		fmt.Printf("v=%#v\n", v)
+	}
+
+	answer := "unimplemented"
+	return answer, nil
+}
+
+func main() {
+	lines, err := getLines()
+	if err != nil {
+		panic(err)
+	}
+
+	answer, err := solve(lines)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println(answer)
+}
+
+//
+// helpers
+//
 
 // for temporary use only
 func check(err error) {
@@ -15,34 +46,13 @@ func check(err error) {
 	}
 }
 
-func main() {
-	debug.SetFlags(0)
-	debug.SetPrefix("debug: ")
+var source = os.Stdin
 
-	answer, err := solve(os.Stdin)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println(answer)
-}
-
-func solve(reader io.Reader) (answer string, err error) {
-	scanner := bufio.NewScanner(reader)
+func getLines() ([]string, error) {
+	var lines []string
+	scanner := bufio.NewScanner(source)
 	for scanner.Scan() {
-		v := scanner.Text()
-
-		// modify stuff here
-
-		debug.Println(v)
-
+		lines = append(lines, scanner.Text())
 	}
-	err = scanner.Err()
-	if err != nil {
-		return
-	}
-
-	// modify stuff here
-
-	answer = "unimplemented"
-	return
+	return lines, scanner.Err()
 }
