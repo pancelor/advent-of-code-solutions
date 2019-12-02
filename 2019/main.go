@@ -2,18 +2,15 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 )
 
-func solve(lines []string) (interface{}, error) {
-	for _, line := range lines {
-		v, err := strconv.Atoi(line)
-		if err != nil {
-			return nil, err
-		}
-
+func solve(input []int) (interface{}, error) {
+	for _, v := range input {
 		fmt.Printf("v=%#v\n", v)
 	}
 
@@ -22,17 +19,17 @@ func solve(lines []string) (interface{}, error) {
 }
 
 func main() {
-	lines, err := getLines()
+	input, err := getInput()
 	if err != nil {
 		panic(err)
 	}
 
-	answer, err := solve(lines)
+	answer, err := solve(input)
 	if err != nil {
 		panic(err)
 	}
 
-	fmt.Println(answer)
+	fmt.Printf("answer:\n%v\n", answer)
 }
 
 //
@@ -46,7 +43,37 @@ func check(err error) {
 	}
 }
 
+// for temporary use only
+func assert(b bool, msg string) {
+	if !b {
+		panic(errors.New(msg))
+	}
+}
+
 var source = os.Stdin
+
+func getInput() ([]int, error) {
+	lines, err := getLines()
+	if err != nil {
+		return nil, err
+	}
+
+	var res []int
+	for _, l := range strings.Split(lines[0], ",") {
+		if l == "" {
+			continue
+		}
+
+		v, err := strconv.Atoi(l)
+		if err != nil {
+			return nil, err
+		}
+
+		res = append(res, v)
+	}
+
+	return res, nil
+}
 
 func getLines() ([]string, error) {
 	var lines []string
