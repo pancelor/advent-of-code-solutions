@@ -13,8 +13,8 @@ func solve(wires []Wire) (interface{}, error) {
 	wireA := wires[0]
 	wireB := wires[1]
 
-	fmt.Printf("wireA=%#v\n", wireA)
-	fmt.Printf("wireB=%#v\n", wireB)
+	// fmt.Printf("wireA=%#v\n", wireA)
+	// fmt.Printf("wireB=%#v\n", wireB)
 	minDist := 1000000
 	for _, lineA := range wireA.lines {
 		for _, lineB := range wireB.lines {
