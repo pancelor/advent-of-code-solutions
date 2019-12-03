@@ -22,7 +22,9 @@ func solve(wires []Wire) (interface{}, error) {
 			if x == 0 && y == 0 {
 				continue
 			}
-			dist := abs(x) + abs(y)
+			distA := lineA.tailLen + lineA.dist(x, y)
+			distB := lineB.tailLen + lineB.dist(x, y)
+			dist := distA + distB
 			if dist < minDist {
 				minDist = dist
 			}
@@ -73,10 +75,11 @@ type Wire struct {
 
 // Line .
 type Line struct {
-	x1 int
-	x2 int
-	y1 int
-	y2 int
+	tailLen int
+	x1      int
+	x2      int
+	y1      int
+	y2      int
 }
 
 func (l *Line) validate() error {
@@ -122,6 +125,11 @@ func between(x, a, b int) bool {
 	res := a <= x && x <= b
 	// fmt.Println(a, x, b, res)
 	return res
+}
+
+func (l *Line) dist(x, y int) int {
+	assert(between(x, l.x1, l.x2) && between(y, l.y1, l.y2), "bad dist args")
+	return abs(x-l.x1) + abs(y-l.y1)
 }
 
 func (l *Line) intersect(o Line) (int, int) {
@@ -191,6 +199,8 @@ func test() {
 	l5 := Line{x1: 3, x2: 3, y1: -5, y2: -2}
 	l6 := Line{x1: 6, x2: 2, y1: -3, y2: -3}
 	f(l5, l6, 3, -3, "t5")
+	assert(l5.dist(3, -3) == 2, "t6")
+	assert(l6.dist(3, -3) == 3, "t7")
 }
 
 func getInput() ([]Wire, error) {
@@ -205,7 +215,7 @@ func getInput() ([]Wire, error) {
 			continue
 		}
 		var segs []Line
-		var x, y int
+		var x, y, len int
 		for _, token := range strings.Split(l, ",") {
 			var dirCode string
 			var dist int
@@ -226,7 +236,8 @@ func getInput() ([]Wire, error) {
 			case "D":
 				y += dist
 			}
-			s := Line{x1: x1, y1: y1, x2: x, y2: y}
+			s := Line{tailLen: len, x1: x1, y1: y1, x2: x, y2: y}
+			len += dist
 			if err := s.validate(); err != nil {
 				return res, err
 			}
