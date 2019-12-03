@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"strconv"
-	"strings"
 )
 
 func solve(input []int) (interface{}, error) {
@@ -59,7 +58,7 @@ func getInput() ([]int, error) {
 	}
 
 	var res []int
-	for _, l := range strings.Split(lines[0], ",") {
+	for _, l := range lines {
 		if l == "" {
 			continue
 		}
