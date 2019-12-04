@@ -9,15 +9,21 @@ import (
 )
 
 func solve(input []int) (interface{}, error) {
-	for _, v := range input {
-		fmt.Printf("v=%#v\n", v)
+	for _, val := range input {
+		fmt.Printf("val=%#v\n", val)
 	}
 
 	answer := "unimplemented"
 	return answer, nil
 }
 
+func test() {
+	assert(true, "t1")
+}
+
 func main() {
+	test()
+
 	input, err := getInput()
 	if err != nil {
 		panic(err)
