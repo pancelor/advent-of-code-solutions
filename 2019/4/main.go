@@ -40,10 +40,20 @@ func works(s string) bool {
 		}
 		last = ch
 	}
+	if currentLen == 2 {
+		hasDouble = true
+	}
 	return hasDouble
 }
 
+func test() {
+	assert(works("111122"), "t1")
+	assert(!works("111222"), "t2")
+}
+
 func main() {
+	test()
+
 	low, high, err := getInput()
 	if err != nil {
 		panic(err)
