@@ -1,25 +1,21 @@
-## what is it / how do i log in
+# Advent of code solutions
 
-https://adventofcode.com/
+My solutions for https://adventofcode.com/
 
-logged in through github as pancelor
-
-i saw this before but didn't start until 2018
-
-## fun things i learned:
-
-edit code in cmdline with:
-
-```bash
-cat <<EOF > hello.go
+My current workflow, e.g. on day 7:
+``` bash
+cd 2019
+./new.sh 7
+cd 7
+# edit code
+go run main.go < input.txt
 ```
 
-## todo still
+## todo
 
-finish all days in 2018 (currently on day 12)
 to optimize (i.e. find a way faster algorithm):
-    opt 18.6.1
-    opt 18.6.2
-    do 18.7.2
-    do 18.9.2
-    opt 18.11.2
+* opt 18.6.1
+* opt 18.6.2
+* do 18.7.2
+* do 18.9.2
+* opt 18.11.2
