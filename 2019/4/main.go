@@ -24,13 +24,19 @@ func solve(low, high int) (interface{}, error) {
 
 func works(s string) bool {
 	hasDouble := false
+	currentLen := 1
 	last := byte('0')
 	for _, ch := range []byte(s) {
 		if ch < last {
 			return false
 		}
 		if last == ch {
-			hasDouble = true
+			currentLen++
+		} else {
+			if currentLen == 2 {
+				hasDouble = true
+			}
+			currentLen = 1
 		}
 		last = ch
 	}
