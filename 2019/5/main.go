@@ -21,10 +21,11 @@ func solve(memTemplate []int) (interface{}, error) {
 }
 
 // Modes represent argument parameter modes
-// get(0) == true means the first parameter should be interpreted in
-//   immediate mode; false means position mode
+// get(0) == 1 means the first parameter should be interpreted in
+//   immediate mode; 0 means position mode
 type Modes struct {
 	modes []int
+	ptr   int
 }
 
 func (m *Modes) get(n int) int {
@@ -33,6 +34,23 @@ func (m *Modes) get(n int) int {
 		return 0
 	}
 	return m.modes[n]
+}
+
+func (m *Modes) getNext() int {
+	m.ptr++
+	return m.get(m.ptr - 1)
+}
+
+func paramValue(mem []int, param int, mode int) int {
+	switch mode {
+	case 0:
+		ensureInbounds(mem, param)
+		return mem[param]
+	case 1:
+		return param
+	}
+	assert(false, "bad paramValue")
+	return 0
 }
 
 func parseOpcode(code int) (int, Modes, error) {
@@ -51,7 +69,7 @@ func parseOpcode(code int) (int, Modes, error) {
 		}
 	}
 	// fmt.Printf("done\n")
-	return opcode, Modes{modes}, nil
+	return opcode, Modes{modes: modes}, nil
 }
 
 func run(mem []int, inputs []int) ([]int, error) {
@@ -73,47 +91,47 @@ func run(mem []int, inputs []int) ([]int, error) {
 			a := chomp(mem, &pc)
 			b := chomp(mem, &pc)
 			c := chomp(mem, &pc)
-			av := paramValue(mem, a, modes.get(0))
-			bv := paramValue(mem, b, modes.get(1))
+			av := paramValue(mem, a, modes.getNext())
+			bv := paramValue(mem, b, modes.getNext())
 			ensureInbounds(mem, c)
-			assert(modes.get(2) == 0, "immediate mode output param")
+			assert(modes.getNext() == 0, "immediate mode output param")
 
 			mem[c] = av + bv
 		case 2: // mult
 			a := chomp(mem, &pc)
 			b := chomp(mem, &pc)
 			c := chomp(mem, &pc)
-			av := paramValue(mem, a, modes.get(0))
-			bv := paramValue(mem, b, modes.get(1))
+			av := paramValue(mem, a, modes.getNext())
+			bv := paramValue(mem, b, modes.getNext())
 			ensureInbounds(mem, c)
-			assert(modes.get(2) == 0, "immediate mode output param")
+			assert(modes.getNext() == 0, "immediate mode output param")
 
 			mem[c] = av * bv
 		case 3: // input
 			a := chomp(mem, &pc)
 			ensureInbounds(mem, a)
-			assert(modes.get(0) == 0, "immediate mode output param")
+			assert(modes.getNext() == 0, "immediate mode output param")
 			i := chomp(inputs, &inputsPtr)
 
 			mem[a] = i
 		case 4: // output
 			a := chomp(mem, &pc)
-			av := paramValue(mem, a, modes.get(0))
+			av := paramValue(mem, a, modes.getNext())
 
 			res = append(res, av)
 		case 5: // jump-if-true
 			a := chomp(mem, &pc)
 			b := chomp(mem, &pc)
-			av := paramValue(mem, a, modes.get(0))
-			bv := paramValue(mem, b, modes.get(1))
+			av := paramValue(mem, a, modes.getNext())
+			bv := paramValue(mem, b, modes.getNext())
 			if av != 0 {
 				pc = bv - 1 // pc will increment next chomp
 			}
 		case 6: // jump-if-false
 			a := chomp(mem, &pc)
 			b := chomp(mem, &pc)
-			av := paramValue(mem, a, modes.get(0))
-			bv := paramValue(mem, b, modes.get(1))
+			av := paramValue(mem, a, modes.getNext())
+			bv := paramValue(mem, b, modes.getNext())
 			if av == 0 {
 				pc = bv - 1 // pc will increment next chomp
 			}
@@ -121,9 +139,9 @@ func run(mem []int, inputs []int) ([]int, error) {
 			a := chomp(mem, &pc)
 			b := chomp(mem, &pc)
 			c := chomp(mem, &pc)
-			av := paramValue(mem, a, modes.get(0))
-			bv := paramValue(mem, b, modes.get(1))
-			assert(modes.get(2) == 0, "immediate mode output param")
+			av := paramValue(mem, a, modes.getNext())
+			bv := paramValue(mem, b, modes.getNext())
+			assert(modes.getNext() == 0, "immediate mode output param")
 			ensureInbounds(mem, c)
 
 			if av < bv {
@@ -135,9 +153,9 @@ func run(mem []int, inputs []int) ([]int, error) {
 			a := chomp(mem, &pc)
 			b := chomp(mem, &pc)
 			c := chomp(mem, &pc)
-			av := paramValue(mem, a, modes.get(0))
-			bv := paramValue(mem, b, modes.get(1))
-			assert(modes.get(2) == 0, "immediate mode output param")
+			av := paramValue(mem, a, modes.getNext())
+			bv := paramValue(mem, b, modes.getNext())
+			assert(modes.getNext() == 0, "immediate mode output param")
 			ensureInbounds(mem, c)
 
 			if av == bv {
@@ -167,18 +185,6 @@ func chomp(mem []int, pc *int) int {
 	return mem[*pc]
 }
 
-func paramValue(mem []int, param int, mode int) int {
-	switch mode {
-	case 0:
-		ensureInbounds(mem, param)
-		return mem[param]
-	case 1:
-		return param
-	}
-	assert(false, "bad paramValue")
-	return 0
-}
-
 func ensureInbounds(mem []int, ptr ...int) {
 	for _, p := range ptr {
 		assert(0 <= p && p < len(mem), "oob")
@@ -200,10 +206,12 @@ func test() {
 	opcode, modes, err := parseOpcode(1002)
 	assert(err == nil, "t1 err")
 	assert(opcode == 2, "t1 opcode")
-	assert(modes.get(0) == 0, "t1 modes[0]")
-	assert(modes.get(1) == 1, "t1 modes[1]")
-	assert(modes.get(2) == 0, "t1 modes[2]")
-	assert(modes.get(100) == 0, "t1 modes[100]")
+	assert(modes.getNext() == 0, "t1 modes[0]")
+	assert(modes.getNext() == 1, "t1 modes[1]")
+	assert(modes.getNext() == 0, "t1 modes[2]")
+	assert(modes.getNext() == 0, "t1 modes[3]")
+	assert(modes.getNext() == 0, "t1 modes[4]")
+	assert(modes.getNext() == 0, "t1 modes[5]")
 
 	opcode, modes, err = parseOpcode(3002)
 	assert(err != nil, "t2 err")
