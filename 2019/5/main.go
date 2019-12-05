@@ -24,13 +24,13 @@ func solve(memTemplate []int) (interface{}, error) {
 // get(0) == true means the first parameter should be interpreted in
 //   immediate mode; false means position mode
 type Modes struct {
-	modes []bool
+	modes []int
 }
 
-func (m *Modes) get(n int) bool {
+func (m *Modes) get(n int) int {
 	assert(n >= 0, "bad get")
 	if n >= len(m.modes) {
-		return false
+		return 0
 	}
 	return m.modes[n]
 }
@@ -38,14 +38,14 @@ func (m *Modes) get(n int) bool {
 func parseOpcode(code int) (int, Modes, error) {
 	s := strconv.Itoa(code)
 	opcode := code % 100
-	var modes []bool
+	var modes []int
 	for i := len(s) - 3; i >= 0; i-- {
 		// fmt.Printf("i=%v\n", i)
 		// fmt.Printf("s[i]=%v, '0'=%v, ==?: %v\n", s[i], '0', s[i] == '0')
 		if s[i] == '1' {
-			modes = append(modes, true)
+			modes = append(modes, 1)
 		} else if s[i] == '0' {
-			modes = append(modes, false)
+			modes = append(modes, 0)
 		} else {
 			return 0, Modes{}, fmt.Errorf("Unrecognized mode %q[%d]='%c'", s, i, s[i])
 		}
@@ -55,7 +55,7 @@ func parseOpcode(code int) (int, Modes, error) {
 }
 
 func run(mem []int, inputs []int) ([]int, error) {
-	inputsPtr := 0
+	inputsPtr := -1
 
 	var res []int
 	pc := -1
@@ -67,37 +67,38 @@ func run(mem []int, inputs []int) ([]int, error) {
 			return nil, err
 		}
 
-		// TODO
-		_ = modes
-
 		// dump(mem, pc)
 		switch opcode {
 		case 1: // add
 			a := chomp(mem, &pc)
 			b := chomp(mem, &pc)
 			c := chomp(mem, &pc)
-			// a = applyMode(modes.get(0))
-			ensureInbounds(mem, a, b, c)
-			av := mem[a]
-			bv := mem[b]
+			av := paramValue(mem, a, modes.get(0))
+			bv := paramValue(mem, b, modes.get(1))
+			assert(modes.get(2) == 0, "immediate mode output param")
+
 			mem[c] = av + bv
 		case 2: // mult
 			a := chomp(mem, &pc)
 			b := chomp(mem, &pc)
 			c := chomp(mem, &pc)
-			ensureInbounds(mem, a, b, c)
-			av := mem[a]
-			bv := mem[b]
+			av := paramValue(mem, a, modes.get(0))
+			bv := paramValue(mem, b, modes.get(1))
+			assert(modes.get(2) == 0, "immediate mode output param")
+
 			mem[c] = av * bv
 		case 3: // input
 			a := chomp(mem, &pc)
-			i := chomp(inputs, &inputsPtr)
 			ensureInbounds(mem, a)
+			assert(modes.get(0) == 0, "immediate mode output param")
+			i := chomp(inputs, &inputsPtr)
+
 			mem[a] = i
 		case 4: // output
 			a := chomp(mem, &pc)
-			ensureInbounds(mem, a)
-			res = append(res, mem[a])
+			av := paramValue(mem, a, modes.get(0))
+
+			res = append(res, av)
 		case 99: // halt
 			halt = true
 		default:
@@ -118,6 +119,18 @@ func chomp(mem []int, pc *int) int {
 	*pc++
 	ensureInbounds(mem, *pc)
 	return mem[*pc]
+}
+
+func paramValue(mem []int, param int, mode int) int {
+	switch mode {
+	case 0:
+		ensureInbounds(mem, param)
+		return mem[param]
+	case 1:
+		return param
+	}
+	assert(false, "bad paramValue")
+	return 0
 }
 
 func ensureInbounds(mem []int, ptr ...int) {
@@ -141,10 +154,10 @@ func test() {
 	opcode, modes, err := parseOpcode(1002)
 	assert(err == nil, "t1 err")
 	assert(opcode == 2, "t1 opcode")
-	assert(modes.get(0) == false, "t1 modes[0]")
-	assert(modes.get(1) == true, "t1 modes[1]")
-	assert(modes.get(2) == false, "t1 modes[2]")
-	assert(modes.get(100) == false, "t1 modes[100]")
+	assert(modes.get(0) == 0, "t1 modes[0]")
+	assert(modes.get(1) == 1, "t1 modes[1]")
+	assert(modes.get(2) == 0, "t1 modes[2]")
+	assert(modes.get(100) == 0, "t1 modes[100]")
 
 	opcode, modes, err = parseOpcode(3002)
 	assert(err != nil, "t2 err")
@@ -152,7 +165,7 @@ func test() {
 	opcode, modes, err = parseOpcode(42)
 	assert(err == nil, "t3 err")
 
-	assert(false, "failfast")
+	// assert(false, "exit after tests")
 }
 
 func main() {

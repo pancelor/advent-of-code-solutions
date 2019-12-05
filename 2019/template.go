@@ -19,6 +19,8 @@ func solve(input []int) (interface{}, error) {
 
 func test() {
 	assert(true, "t1")
+
+	// assert(false, "exit after tests")
 }
 
 func main() {
