@@ -11,7 +11,7 @@ import (
 
 func solve(memTemplate []int) (interface{}, error) {
 	mem := dupmem(memTemplate)
-	inputs := []int{1}
+	inputs := []int{5}
 	res, err := run(mem, inputs)
 	if err != nil {
 		return nil, err
@@ -75,6 +75,7 @@ func run(mem []int, inputs []int) ([]int, error) {
 			c := chomp(mem, &pc)
 			av := paramValue(mem, a, modes.get(0))
 			bv := paramValue(mem, b, modes.get(1))
+			ensureInbounds(mem, c)
 			assert(modes.get(2) == 0, "immediate mode output param")
 
 			mem[c] = av + bv
@@ -84,6 +85,7 @@ func run(mem []int, inputs []int) ([]int, error) {
 			c := chomp(mem, &pc)
 			av := paramValue(mem, a, modes.get(0))
 			bv := paramValue(mem, b, modes.get(1))
+			ensureInbounds(mem, c)
 			assert(modes.get(2) == 0, "immediate mode output param")
 
 			mem[c] = av * bv
@@ -99,6 +101,50 @@ func run(mem []int, inputs []int) ([]int, error) {
 			av := paramValue(mem, a, modes.get(0))
 
 			res = append(res, av)
+		case 5: // jump-if-true
+			a := chomp(mem, &pc)
+			b := chomp(mem, &pc)
+			av := paramValue(mem, a, modes.get(0))
+			bv := paramValue(mem, b, modes.get(1))
+			if av != 0 {
+				pc = bv - 1 // pc will increment next chomp
+			}
+		case 6: // jump-if-false
+			a := chomp(mem, &pc)
+			b := chomp(mem, &pc)
+			av := paramValue(mem, a, modes.get(0))
+			bv := paramValue(mem, b, modes.get(1))
+			if av == 0 {
+				pc = bv - 1 // pc will increment next chomp
+			}
+		case 7: // less than
+			a := chomp(mem, &pc)
+			b := chomp(mem, &pc)
+			c := chomp(mem, &pc)
+			av := paramValue(mem, a, modes.get(0))
+			bv := paramValue(mem, b, modes.get(1))
+			assert(modes.get(2) == 0, "immediate mode output param")
+			ensureInbounds(mem, c)
+
+			if av < bv {
+				mem[c] = 1
+			} else {
+				mem[c] = 0
+			}
+		case 8: // equals
+			a := chomp(mem, &pc)
+			b := chomp(mem, &pc)
+			c := chomp(mem, &pc)
+			av := paramValue(mem, a, modes.get(0))
+			bv := paramValue(mem, b, modes.get(1))
+			assert(modes.get(2) == 0, "immediate mode output param")
+			ensureInbounds(mem, c)
+
+			if av == bv {
+				mem[c] = 1
+			} else {
+				mem[c] = 0
+			}
 		case 99: // halt
 			halt = true
 		default:
