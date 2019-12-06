@@ -10,10 +10,13 @@ import (
 // KidMap .
 type KidMap map[string]map[string]bool
 
+// ParentMap .
+type ParentMap map[string]string
+
 func buildKidMap(input []Orbit) KidMap {
 	kidMap := make(map[string]map[string]bool)
 	for _, orbit := range input {
-		fmt.Printf("orbit=%#v\n", orbit)
+		// fmt.Printf("orbit=%#v\n", orbit)
 		_, ok := kidMap[orbit.center]
 		if !ok {
 			kidMap[orbit.center] = make(map[string]bool)
@@ -23,7 +26,18 @@ func buildKidMap(input []Orbit) KidMap {
 	return kidMap
 }
 
-func solve1(kidMap KidMap) (interface{}, error) {
+func buildParentMap(input []Orbit) ParentMap {
+	parentMap := make(map[string]string)
+	for _, orbit := range input {
+		// fmt.Printf("orbit=%#v\n", orbit)
+		parentMap[orbit.other] = orbit.center
+	}
+	return parentMap
+}
+
+func solve1(input []Orbit) (interface{}, error) {
+	kidMap := buildKidMap(input)
+
 	total := 0
 	nextLevel := []string{"COM"}
 	for depth := 0; len(nextLevel) > 0; depth++ {
@@ -41,22 +55,41 @@ func solve1(kidMap KidMap) (interface{}, error) {
 	return total, nil
 }
 
-func solve2(kidMap KidMap) (interface{}, error) {
-	total := 0
-	nextLevel := []string{"COM"}
-	for depth := 0; len(nextLevel) > 0; depth++ {
-		fmt.Printf("nextLevel=%#v\n", nextLevel)
-		currLevel := nextLevel
-		nextLevel = []string{}
-		for _, s := range currLevel {
-			total += depth
-			for k := range kidMap[s] {
-				nextLevel = append(nextLevel, k)
+func solve2(input []Orbit) (interface{}, error) {
+	parentMap := buildParentMap(input)
+
+	santaDist := make(map[string]int)
+
+	{ // find YOU chain
+		node := "SAN"
+		for i := 0; true; i++ {
+			// fmt.Printf("SAN; node=%#v\n", node)
+			var ok bool
+			node, ok = parentMap[node]
+			if ok == false {
+				break
+			}
+			santaDist[node] = i
+		}
+	}
+
+	{ // find where YOU chain connects to SAN chain
+		node := "YOU"
+		for i := 0; true; i++ {
+			// fmt.Printf("YOU; node=%#v\n", node)
+			var ok bool
+			node, ok = parentMap[node]
+			if !ok {
+				return nil, fmt.Errorf("Didn't find santa :(")
+			}
+			dist, ok := santaDist[node]
+			if ok {
+				return dist + i, nil
 			}
 		}
 	}
 
-	return total, nil
+	return nil, fmt.Errorf("Didn't find santa... and also somehow escaped the loop??")
 }
 
 func test() {
@@ -73,9 +106,8 @@ func main() {
 		panic(err)
 	}
 
-	kidMap := buildKidMap(input)
-	// answer, err := solve1(kidMap)
-	answer, err := solve2(kidMap)
+	// answer, err := solve1(input)
+	answer, err := solve2(input)
 	if err != nil {
 		panic(err)
 	}
