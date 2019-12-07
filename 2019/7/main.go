@@ -137,27 +137,60 @@ func solve(memTemplate []int) (interface{}, error) {
 	for _, settings := range allPerms {
 		assert(len(settings) == 5, "bad settings len")
 
+		// TEMP
+		// TEMP
+		// TEMP
+		settings = [5]int{9, 7, 8, 5, 6}
+		// TEMP
+		// TEMP
+		// TEMP
+
+		fmt.Printf("\n\n\nsettings=%v\n", settings)
+
 		startCh := make(chan int)
 
-		aCh := run("a", dupmem(memTemplate), startCh)
-		bCh := run("b", dupmem(memTemplate), aCh)
-		cCh := run("c", dupmem(memTemplate), bCh)
-		dCh := run("d", dupmem(memTemplate), cCh)
-		eCh := run("e", dupmem(memTemplate), dCh)
+		aCh, aDone := run("A", dupmem(memTemplate), startCh)
+		bCh, bDone := run("B", dupmem(memTemplate), aCh)
+		cCh, cDone := run("C", dupmem(memTemplate), bCh)
+		dCh, dDone := run("D", dupmem(memTemplate), cCh)
+		eCh, eDone := run("E", dupmem(memTemplate), dCh)
+
+		_ = aDone
+		_ = bDone
+		_ = cDone
+		_ = dDone
 
 		// prime the pump
-		dCh <- settings[4] - 5
-		cCh <- settings[3] - 5
-		bCh <- settings[2] - 5
-		aCh <- settings[1] - 5
-		startCh <- settings[0] - 5
+		startCh <- settings[0]
+		aCh <- settings[1]
+		bCh <- settings[2]
+		cCh <- settings[3]
+		dCh <- settings[4]
+
+		// go
 		startCh <- 0
 
-		res := <-eCh
-		fmt.Printf("setting=%v, res=%v\n", settings, res)
+		go func() {
+			for x := range eCh {
+				fmt.Printf("---got %d from eCh---\n", x)
+				aCh <- x
+			}
+		}()
+
+		<-eDone
+		res := <-aCh
+		fmt.Printf("(settings=%v) res=%v\n", settings, res)
 		if res > best {
 			best = res
 		}
+
+		// TEMP
+		// TEMP
+		// TEMP
+		break
+		// TEMP
+		// TEMP
+		// TEMP
 	}
 
 	return best, nil
@@ -215,8 +248,9 @@ func parseOpcode(code int) (int, Modes, error) {
 	return opcode, Modes{modes: modes}, nil
 }
 
-func run(name string, mem []int, inCh chan int) chan int {
+func run(name string, mem []int, inCh chan int) (chan int, chan struct{}) {
 	outCh := make(chan int)
+	doneCh := make(chan struct{})
 	go func() {
 		pc := -1
 		var halt bool
@@ -225,7 +259,7 @@ func run(name string, mem []int, inCh chan int) chan int {
 			opcode, modes, err := parseOpcode(code)
 			check(err)
 
-			// fmt.Printf("node %s cycle\n", name)
+			// fmt.Printf("node %s pc=%v\n", name, pc)
 			// dump(mem, pc)
 
 			switch opcode {
@@ -254,12 +288,14 @@ func run(name string, mem []int, inCh chan int) chan int {
 				ensureInbounds(mem, a)
 				assert(modes.getNext() == 0, "immediate mode output param")
 				i := <-inCh
+				fmt.Printf("recv on %s: %d\n", name, i)
 
 				mem[a] = i
 			case 4: // output
 				a := chomp(mem, &pc)
 				av := paramValue(mem, a, modes.getNext())
 
+				fmt.Printf("send from %s: %d\n", name, av)
 				outCh <- av
 			case 5: // jump-if-true
 				a := chomp(mem, &pc)
@@ -307,13 +343,14 @@ func run(name string, mem []int, inCh chan int) chan int {
 				}
 			case 99: // halt
 				halt = true
+				doneCh <- struct{}{}
 			default:
 				panic(fmt.Errorf("Bad opcode %d at mem[%d]", mem[pc], pc))
 			}
 		}
 	}()
 
-	return outCh
+	return outCh, doneCh
 }
 
 func dupmem(mem []int) []int {
