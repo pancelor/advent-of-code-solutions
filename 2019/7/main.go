@@ -137,16 +137,6 @@ func solve(memTemplate []int) (interface{}, error) {
 	for _, settings := range allPerms {
 		assert(len(settings) == 5, "bad settings len")
 
-		// TEMP
-		// TEMP
-		// TEMP
-		settings = [5]int{9, 7, 8, 5, 6}
-		// TEMP
-		// TEMP
-		// TEMP
-
-		fmt.Printf("\n\n\nsettings=%v\n", settings)
-
 		startCh := make(chan int)
 
 		aCh, aDone := run("A", dupmem(memTemplate), startCh)
@@ -183,14 +173,6 @@ func solve(memTemplate []int) (interface{}, error) {
 		if res > best {
 			best = res
 		}
-
-		// TEMP
-		// TEMP
-		// TEMP
-		break
-		// TEMP
-		// TEMP
-		// TEMP
 	}
 
 	return best, nil
@@ -288,14 +270,14 @@ func run(name string, mem []int, inCh chan int) (chan int, chan struct{}) {
 				ensureInbounds(mem, a)
 				assert(modes.getNext() == 0, "immediate mode output param")
 				i := <-inCh
-				fmt.Printf("%s < %d\n", name, i)
+				// fmt.Printf("%s < %d\n", name, i)
 
 				mem[a] = i
 			case 4: // output
 				a := chomp(mem, &pc)
 				av := paramValue(mem, a, modes.getNext())
 
-				fmt.Printf("%s : %d\n", name, av)
+				// fmt.Printf("%s : %d\n", name, av)
 				outCh <- av
 			case 5: // jump-if-true
 				a := chomp(mem, &pc)
