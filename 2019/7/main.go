@@ -10,148 +10,151 @@ import (
 )
 
 var allPerms = [][5]int{
-	[5]int{0, 1, 2, 3, 4},
-	[5]int{0, 1, 2, 4, 3},
-	[5]int{0, 1, 3, 2, 4},
-	[5]int{0, 1, 3, 4, 2},
-	[5]int{0, 1, 4, 2, 3},
-	[5]int{0, 1, 4, 3, 2},
-	[5]int{0, 2, 1, 3, 4},
-	[5]int{0, 2, 1, 4, 3},
-	[5]int{0, 2, 3, 1, 4},
-	[5]int{0, 2, 3, 4, 1},
-	[5]int{0, 2, 4, 1, 3},
-	[5]int{0, 2, 4, 3, 1},
-	[5]int{0, 3, 1, 2, 4},
-	[5]int{0, 3, 1, 4, 2},
-	[5]int{0, 3, 2, 1, 4},
-	[5]int{0, 3, 2, 4, 1},
-	[5]int{0, 3, 4, 1, 2},
-	[5]int{0, 3, 4, 2, 1},
-	[5]int{0, 4, 1, 2, 3},
-	[5]int{0, 4, 1, 3, 2},
-	[5]int{0, 4, 2, 1, 3},
-	[5]int{0, 4, 2, 3, 1},
-	[5]int{0, 4, 3, 1, 2},
-	[5]int{0, 4, 3, 2, 1},
-	[5]int{1, 0, 2, 3, 4},
-	[5]int{1, 0, 2, 4, 3},
-	[5]int{1, 0, 3, 2, 4},
-	[5]int{1, 0, 3, 4, 2},
-	[5]int{1, 0, 4, 2, 3},
-	[5]int{1, 0, 4, 3, 2},
-	[5]int{1, 2, 0, 3, 4},
-	[5]int{1, 2, 0, 4, 3},
-	[5]int{1, 2, 3, 0, 4},
-	[5]int{1, 2, 3, 4, 0},
-	[5]int{1, 2, 4, 0, 3},
-	[5]int{1, 2, 4, 3, 0},
-	[5]int{1, 3, 0, 2, 4},
-	[5]int{1, 3, 0, 4, 2},
-	[5]int{1, 3, 2, 0, 4},
-	[5]int{1, 3, 2, 4, 0},
-	[5]int{1, 3, 4, 0, 2},
-	[5]int{1, 3, 4, 2, 0},
-	[5]int{1, 4, 0, 2, 3},
-	[5]int{1, 4, 0, 3, 2},
-	[5]int{1, 4, 2, 0, 3},
-	[5]int{1, 4, 2, 3, 0},
-	[5]int{1, 4, 3, 0, 2},
-	[5]int{1, 4, 3, 2, 0},
-	[5]int{2, 0, 1, 3, 4},
-	[5]int{2, 0, 1, 4, 3},
-	[5]int{2, 0, 3, 1, 4},
-	[5]int{2, 0, 3, 4, 1},
-	[5]int{2, 0, 4, 1, 3},
-	[5]int{2, 0, 4, 3, 1},
-	[5]int{2, 1, 0, 3, 4},
-	[5]int{2, 1, 0, 4, 3},
-	[5]int{2, 1, 3, 0, 4},
-	[5]int{2, 1, 3, 4, 0},
-	[5]int{2, 1, 4, 0, 3},
-	[5]int{2, 1, 4, 3, 0},
-	[5]int{2, 3, 0, 1, 4},
-	[5]int{2, 3, 0, 4, 1},
-	[5]int{2, 3, 1, 0, 4},
-	[5]int{2, 3, 1, 4, 0},
-	[5]int{2, 3, 4, 0, 1},
-	[5]int{2, 3, 4, 1, 0},
-	[5]int{2, 4, 0, 1, 3},
-	[5]int{2, 4, 0, 3, 1},
-	[5]int{2, 4, 1, 0, 3},
-	[5]int{2, 4, 1, 3, 0},
-	[5]int{2, 4, 3, 0, 1},
-	[5]int{2, 4, 3, 1, 0},
-	[5]int{3, 0, 1, 2, 4},
-	[5]int{3, 0, 1, 4, 2},
-	[5]int{3, 0, 2, 1, 4},
-	[5]int{3, 0, 2, 4, 1},
-	[5]int{3, 0, 4, 1, 2},
-	[5]int{3, 0, 4, 2, 1},
-	[5]int{3, 1, 0, 2, 4},
-	[5]int{3, 1, 0, 4, 2},
-	[5]int{3, 1, 2, 0, 4},
-	[5]int{3, 1, 2, 4, 0},
-	[5]int{3, 1, 4, 0, 2},
-	[5]int{3, 1, 4, 2, 0},
-	[5]int{3, 2, 0, 1, 4},
-	[5]int{3, 2, 0, 4, 1},
-	[5]int{3, 2, 1, 0, 4},
-	[5]int{3, 2, 1, 4, 0},
-	[5]int{3, 2, 4, 0, 1},
-	[5]int{3, 2, 4, 1, 0},
-	[5]int{3, 4, 0, 1, 2},
-	[5]int{3, 4, 0, 2, 1},
-	[5]int{3, 4, 1, 0, 2},
-	[5]int{3, 4, 1, 2, 0},
-	[5]int{3, 4, 2, 0, 1},
-	[5]int{3, 4, 2, 1, 0},
-	[5]int{4, 0, 1, 2, 3},
-	[5]int{4, 0, 1, 3, 2},
-	[5]int{4, 0, 2, 1, 3},
-	[5]int{4, 0, 2, 3, 1},
-	[5]int{4, 0, 3, 1, 2},
-	[5]int{4, 0, 3, 2, 1},
-	[5]int{4, 1, 0, 2, 3},
-	[5]int{4, 1, 0, 3, 2},
-	[5]int{4, 1, 2, 0, 3},
-	[5]int{4, 1, 2, 3, 0},
-	[5]int{4, 1, 3, 0, 2},
-	[5]int{4, 1, 3, 2, 0},
-	[5]int{4, 2, 0, 1, 3},
-	[5]int{4, 2, 0, 3, 1},
-	[5]int{4, 2, 1, 0, 3},
-	[5]int{4, 2, 1, 3, 0},
-	[5]int{4, 2, 3, 0, 1},
-	[5]int{4, 2, 3, 1, 0},
-	[5]int{4, 3, 0, 1, 2},
-	[5]int{4, 3, 0, 2, 1},
-	[5]int{4, 3, 1, 0, 2},
-	[5]int{4, 3, 1, 2, 0},
-	[5]int{4, 3, 2, 0, 1},
-	[5]int{4, 3, 2, 1, 0},
+	[5]int{5, 6, 7, 8, 9},
+	[5]int{5, 6, 7, 9, 8},
+	[5]int{5, 6, 8, 7, 9},
+	[5]int{5, 6, 8, 9, 7},
+	[5]int{5, 6, 9, 7, 8},
+	[5]int{5, 6, 9, 8, 7},
+	[5]int{5, 7, 6, 8, 9},
+	[5]int{5, 7, 6, 9, 8},
+	[5]int{5, 7, 8, 6, 9},
+	[5]int{5, 7, 8, 9, 6},
+	[5]int{5, 7, 9, 6, 8},
+	[5]int{5, 7, 9, 8, 6},
+	[5]int{5, 8, 6, 7, 9},
+	[5]int{5, 8, 6, 9, 7},
+	[5]int{5, 8, 7, 6, 9},
+	[5]int{5, 8, 7, 9, 6},
+	[5]int{5, 8, 9, 6, 7},
+	[5]int{5, 8, 9, 7, 6},
+	[5]int{5, 9, 6, 7, 8},
+	[5]int{5, 9, 6, 8, 7},
+	[5]int{5, 9, 7, 6, 8},
+	[5]int{5, 9, 7, 8, 6},
+	[5]int{5, 9, 8, 6, 7},
+	[5]int{5, 9, 8, 7, 6},
+	[5]int{6, 5, 7, 8, 9},
+	[5]int{6, 5, 7, 9, 8},
+	[5]int{6, 5, 8, 7, 9},
+	[5]int{6, 5, 8, 9, 7},
+	[5]int{6, 5, 9, 7, 8},
+	[5]int{6, 5, 9, 8, 7},
+	[5]int{6, 7, 5, 8, 9},
+	[5]int{6, 7, 5, 9, 8},
+	[5]int{6, 7, 8, 5, 9},
+	[5]int{6, 7, 8, 9, 5},
+	[5]int{6, 7, 9, 5, 8},
+	[5]int{6, 7, 9, 8, 5},
+	[5]int{6, 8, 5, 7, 9},
+	[5]int{6, 8, 5, 9, 7},
+	[5]int{6, 8, 7, 5, 9},
+	[5]int{6, 8, 7, 9, 5},
+	[5]int{6, 8, 9, 5, 7},
+	[5]int{6, 8, 9, 7, 5},
+	[5]int{6, 9, 5, 7, 8},
+	[5]int{6, 9, 5, 8, 7},
+	[5]int{6, 9, 7, 5, 8},
+	[5]int{6, 9, 7, 8, 5},
+	[5]int{6, 9, 8, 5, 7},
+	[5]int{6, 9, 8, 7, 5},
+	[5]int{7, 5, 6, 8, 9},
+	[5]int{7, 5, 6, 9, 8},
+	[5]int{7, 5, 8, 6, 9},
+	[5]int{7, 5, 8, 9, 6},
+	[5]int{7, 5, 9, 6, 8},
+	[5]int{7, 5, 9, 8, 6},
+	[5]int{7, 6, 5, 8, 9},
+	[5]int{7, 6, 5, 9, 8},
+	[5]int{7, 6, 8, 5, 9},
+	[5]int{7, 6, 8, 9, 5},
+	[5]int{7, 6, 9, 5, 8},
+	[5]int{7, 6, 9, 8, 5},
+	[5]int{7, 8, 5, 6, 9},
+	[5]int{7, 8, 5, 9, 6},
+	[5]int{7, 8, 6, 5, 9},
+	[5]int{7, 8, 6, 9, 5},
+	[5]int{7, 8, 9, 5, 6},
+	[5]int{7, 8, 9, 6, 5},
+	[5]int{7, 9, 5, 6, 8},
+	[5]int{7, 9, 5, 8, 6},
+	[5]int{7, 9, 6, 5, 8},
+	[5]int{7, 9, 6, 8, 5},
+	[5]int{7, 9, 8, 5, 6},
+	[5]int{7, 9, 8, 6, 5},
+	[5]int{8, 5, 6, 7, 9},
+	[5]int{8, 5, 6, 9, 7},
+	[5]int{8, 5, 7, 6, 9},
+	[5]int{8, 5, 7, 9, 6},
+	[5]int{8, 5, 9, 6, 7},
+	[5]int{8, 5, 9, 7, 6},
+	[5]int{8, 6, 5, 7, 9},
+	[5]int{8, 6, 5, 9, 7},
+	[5]int{8, 6, 7, 5, 9},
+	[5]int{8, 6, 7, 9, 5},
+	[5]int{8, 6, 9, 5, 7},
+	[5]int{8, 6, 9, 7, 5},
+	[5]int{8, 7, 5, 6, 9},
+	[5]int{8, 7, 5, 9, 6},
+	[5]int{8, 7, 6, 5, 9},
+	[5]int{8, 7, 6, 9, 5},
+	[5]int{8, 7, 9, 5, 6},
+	[5]int{8, 7, 9, 6, 5},
+	[5]int{8, 9, 5, 6, 7},
+	[5]int{8, 9, 5, 7, 6},
+	[5]int{8, 9, 6, 5, 7},
+	[5]int{8, 9, 6, 7, 5},
+	[5]int{8, 9, 7, 5, 6},
+	[5]int{8, 9, 7, 6, 5},
+	[5]int{9, 5, 6, 7, 8},
+	[5]int{9, 5, 6, 8, 7},
+	[5]int{9, 5, 7, 6, 8},
+	[5]int{9, 5, 7, 8, 6},
+	[5]int{9, 5, 8, 6, 7},
+	[5]int{9, 5, 8, 7, 6},
+	[5]int{9, 6, 5, 7, 8},
+	[5]int{9, 6, 5, 8, 7},
+	[5]int{9, 6, 7, 5, 8},
+	[5]int{9, 6, 7, 8, 5},
+	[5]int{9, 6, 8, 5, 7},
+	[5]int{9, 6, 8, 7, 5},
+	[5]int{9, 7, 5, 6, 8},
+	[5]int{9, 7, 5, 8, 6},
+	[5]int{9, 7, 6, 5, 8},
+	[5]int{9, 7, 6, 8, 5},
+	[5]int{9, 7, 8, 5, 6},
+	[5]int{9, 7, 8, 6, 5},
+	[5]int{9, 8, 5, 6, 7},
+	[5]int{9, 8, 5, 7, 6},
+	[5]int{9, 8, 6, 5, 7},
+	[5]int{9, 8, 6, 7, 5},
+	[5]int{9, 8, 7, 5, 6},
+	[5]int{9, 8, 7, 6, 5},
 }
 
 func solve(memTemplate []int) (interface{}, error) {
 	best := 0
 	for _, settings := range allPerms {
 		assert(len(settings) == 5, "bad settings len")
-		aOut, err := run(dupmem(memTemplate), []int{settings[0], 0})
-		check(err)
-		assert(len(aOut) == 1, "bad aOut len")
-		bOut, err := run(dupmem(memTemplate), []int{settings[1], aOut[0]})
-		check(err)
-		assert(len(bOut) == 1, "bad bOut len")
-		cOut, err := run(dupmem(memTemplate), []int{settings[2], bOut[0]})
-		check(err)
-		assert(len(cOut) == 1, "bad cOut len")
-		dOut, err := run(dupmem(memTemplate), []int{settings[3], cOut[0]})
-		check(err)
-		assert(len(dOut) == 1, "bad dOut len")
-		eOut, err := run(dupmem(memTemplate), []int{settings[4], dOut[0]})
-		check(err)
-		assert(len(eOut) == 1, "bad eOut len")
-		res := eOut[0]
+
+		startCh := make(chan int)
+
+		aCh := run("a", dupmem(memTemplate), startCh)
+		bCh := run("b", dupmem(memTemplate), aCh)
+		cCh := run("c", dupmem(memTemplate), bCh)
+		dCh := run("d", dupmem(memTemplate), cCh)
+		eCh := run("e", dupmem(memTemplate), dCh)
+
+		// prime the pump
+		dCh <- settings[4] - 5
+		cCh <- settings[3] - 5
+		bCh <- settings[2] - 5
+		aCh <- settings[1] - 5
+		startCh <- settings[0] - 5
+		startCh <- 0
+
+		res := <-eCh
+		fmt.Printf("setting=%v, res=%v\n", settings, res)
 		if res > best {
 			best = res
 		}
@@ -212,105 +215,105 @@ func parseOpcode(code int) (int, Modes, error) {
 	return opcode, Modes{modes: modes}, nil
 }
 
-func run(mem []int, inputs []int) ([]int, error) {
-	inputsPtr := -1
+func run(name string, mem []int, inCh chan int) chan int {
+	outCh := make(chan int)
+	go func() {
+		pc := -1
+		var halt bool
+		for !halt {
+			code := chomp(mem, &pc)
+			opcode, modes, err := parseOpcode(code)
+			check(err)
 
-	var res []int
-	pc := -1
-	var halt bool
-	for !halt {
-		code := chomp(mem, &pc)
-		opcode, modes, err := parseOpcode(code)
-		if err != nil {
-			return nil, err
+			// fmt.Printf("node %s cycle\n", name)
+			// dump(mem, pc)
+
+			switch opcode {
+			case 1: // add
+				a := chomp(mem, &pc)
+				b := chomp(mem, &pc)
+				c := chomp(mem, &pc)
+				av := paramValue(mem, a, modes.getNext())
+				bv := paramValue(mem, b, modes.getNext())
+				ensureInbounds(mem, c)
+				assert(modes.getNext() == 0, "immediate mode output param")
+
+				mem[c] = av + bv
+			case 2: // mult
+				a := chomp(mem, &pc)
+				b := chomp(mem, &pc)
+				c := chomp(mem, &pc)
+				av := paramValue(mem, a, modes.getNext())
+				bv := paramValue(mem, b, modes.getNext())
+				ensureInbounds(mem, c)
+				assert(modes.getNext() == 0, "immediate mode output param")
+
+				mem[c] = av * bv
+			case 3: // input
+				a := chomp(mem, &pc)
+				ensureInbounds(mem, a)
+				assert(modes.getNext() == 0, "immediate mode output param")
+				i := <-inCh
+
+				mem[a] = i
+			case 4: // output
+				a := chomp(mem, &pc)
+				av := paramValue(mem, a, modes.getNext())
+
+				outCh <- av
+			case 5: // jump-if-true
+				a := chomp(mem, &pc)
+				b := chomp(mem, &pc)
+				av := paramValue(mem, a, modes.getNext())
+				bv := paramValue(mem, b, modes.getNext())
+				if av != 0 {
+					pc = bv - 1 // pc will increment next chomp
+				}
+			case 6: // jump-if-false
+				a := chomp(mem, &pc)
+				b := chomp(mem, &pc)
+				av := paramValue(mem, a, modes.getNext())
+				bv := paramValue(mem, b, modes.getNext())
+				if av == 0 {
+					pc = bv - 1 // pc will increment next chomp
+				}
+			case 7: // less than
+				a := chomp(mem, &pc)
+				b := chomp(mem, &pc)
+				c := chomp(mem, &pc)
+				av := paramValue(mem, a, modes.getNext())
+				bv := paramValue(mem, b, modes.getNext())
+				assert(modes.getNext() == 0, "immediate mode output param")
+				ensureInbounds(mem, c)
+
+				if av < bv {
+					mem[c] = 1
+				} else {
+					mem[c] = 0
+				}
+			case 8: // equals
+				a := chomp(mem, &pc)
+				b := chomp(mem, &pc)
+				c := chomp(mem, &pc)
+				av := paramValue(mem, a, modes.getNext())
+				bv := paramValue(mem, b, modes.getNext())
+				assert(modes.getNext() == 0, "immediate mode output param")
+				ensureInbounds(mem, c)
+
+				if av == bv {
+					mem[c] = 1
+				} else {
+					mem[c] = 0
+				}
+			case 99: // halt
+				halt = true
+			default:
+				panic(fmt.Errorf("Bad opcode %d at mem[%d]", mem[pc], pc))
+			}
 		}
+	}()
 
-		// dump(mem, pc)
-		switch opcode {
-		case 1: // add
-			a := chomp(mem, &pc)
-			b := chomp(mem, &pc)
-			c := chomp(mem, &pc)
-			av := paramValue(mem, a, modes.getNext())
-			bv := paramValue(mem, b, modes.getNext())
-			ensureInbounds(mem, c)
-			assert(modes.getNext() == 0, "immediate mode output param")
-
-			mem[c] = av + bv
-		case 2: // mult
-			a := chomp(mem, &pc)
-			b := chomp(mem, &pc)
-			c := chomp(mem, &pc)
-			av := paramValue(mem, a, modes.getNext())
-			bv := paramValue(mem, b, modes.getNext())
-			ensureInbounds(mem, c)
-			assert(modes.getNext() == 0, "immediate mode output param")
-
-			mem[c] = av * bv
-		case 3: // input
-			a := chomp(mem, &pc)
-			ensureInbounds(mem, a)
-			assert(modes.getNext() == 0, "immediate mode output param")
-			i := chomp(inputs, &inputsPtr)
-
-			mem[a] = i
-		case 4: // output
-			a := chomp(mem, &pc)
-			av := paramValue(mem, a, modes.getNext())
-
-			res = append(res, av)
-		case 5: // jump-if-true
-			a := chomp(mem, &pc)
-			b := chomp(mem, &pc)
-			av := paramValue(mem, a, modes.getNext())
-			bv := paramValue(mem, b, modes.getNext())
-			if av != 0 {
-				pc = bv - 1 // pc will increment next chomp
-			}
-		case 6: // jump-if-false
-			a := chomp(mem, &pc)
-			b := chomp(mem, &pc)
-			av := paramValue(mem, a, modes.getNext())
-			bv := paramValue(mem, b, modes.getNext())
-			if av == 0 {
-				pc = bv - 1 // pc will increment next chomp
-			}
-		case 7: // less than
-			a := chomp(mem, &pc)
-			b := chomp(mem, &pc)
-			c := chomp(mem, &pc)
-			av := paramValue(mem, a, modes.getNext())
-			bv := paramValue(mem, b, modes.getNext())
-			assert(modes.getNext() == 0, "immediate mode output param")
-			ensureInbounds(mem, c)
-
-			if av < bv {
-				mem[c] = 1
-			} else {
-				mem[c] = 0
-			}
-		case 8: // equals
-			a := chomp(mem, &pc)
-			b := chomp(mem, &pc)
-			c := chomp(mem, &pc)
-			av := paramValue(mem, a, modes.getNext())
-			bv := paramValue(mem, b, modes.getNext())
-			assert(modes.getNext() == 0, "immediate mode output param")
-			ensureInbounds(mem, c)
-
-			if av == bv {
-				mem[c] = 1
-			} else {
-				mem[c] = 0
-			}
-		case 99: // halt
-			halt = true
-		default:
-			return nil, fmt.Errorf("Bad opcode %d at mem[%d]", mem[pc], pc)
-		}
-	}
-
-	return res, nil
+	return outCh
 }
 
 func dupmem(mem []int) []int {
