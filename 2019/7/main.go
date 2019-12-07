@@ -172,13 +172,13 @@ func solve(memTemplate []int) (interface{}, error) {
 
 		go func() {
 			for x := range eCh {
-				fmt.Printf("---got %d from eCh---\n", x)
-				aCh <- x
+				// fmt.Printf("---got %d from eCh---\n", x)
+				startCh <- x
 			}
 		}()
 
 		<-eDone
-		res := <-aCh
+		res := <-startCh
 		fmt.Printf("(settings=%v) res=%v\n", settings, res)
 		if res > best {
 			best = res
@@ -288,14 +288,14 @@ func run(name string, mem []int, inCh chan int) (chan int, chan struct{}) {
 				ensureInbounds(mem, a)
 				assert(modes.getNext() == 0, "immediate mode output param")
 				i := <-inCh
-				fmt.Printf("recv on %s: %d\n", name, i)
+				fmt.Printf("%s < %d\n", name, i)
 
 				mem[a] = i
 			case 4: // output
 				a := chomp(mem, &pc)
 				av := paramValue(mem, a, modes.getNext())
 
-				fmt.Printf("send from %s: %d\n", name, av)
+				fmt.Printf("%s : %d\n", name, av)
 				outCh <- av
 			case 5: // jump-if-true
 				a := chomp(mem, &pc)
