@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-func count(l Layer, i byte) int {
+func count(l Layer, i int) int {
 	num := 0
 	for _, row := range l.arr {
 		for _, x := range row {
@@ -21,18 +21,31 @@ func count(l Layer, i byte) int {
 }
 
 func solve(layers []Layer) (interface{}, error) {
-	argMin := -1
-	min := 0
-	for i, l := range layers {
-		numZeros := count(l, '0')
-		if argMin == -1 || numZeros < min {
-			argMin = i
-			min = numZeros
+	// 0 transparent, 1 not, 2 not
+	res := Layer{}
+	for _, l := range layers {
+		for r, row := range l.arr {
+			for c, x := range row {
+				if x != 0 {
+					res.arr[r][c] = x
+				}
+			}
 		}
-		fmt.Printf("i, numZeros, argmMin, min=%d,%d,%d,%d\n", i, numZeros, argMin, min)
 	}
 
-	return count(layers[argMin], '2') * count(layers[argMin], '1'), nil
+	for _, row := range res.arr {
+		for _, x := range row {
+			switch x {
+			case 2:
+				fmt.Printf("%d", x)
+			default:
+				fmt.Printf(" ")
+			}
+		}
+		fmt.Printf("\n")
+	}
+
+	return nil, nil
 }
 
 func test() {
@@ -79,7 +92,7 @@ var source = os.Stdin
 
 // Layer .
 type Layer struct {
-	arr [H][W]byte
+	arr [H][W]int
 }
 
 // W width
@@ -98,11 +111,17 @@ func getInput() ([]Layer, error) {
 	full := []byte(strings.Join(lines, ""))
 	// fmt.Printf("full=%#v\n", full)
 	for i := 0; i*W*H < len(full); i++ {
-		l := [H][W]byte{}
+		l := [H][W]int{}
 		for r := 0; r < H; r++ {
-			row := [W]byte{}
+			row := [W]int{}
 			for c := 0; c < W; c++ {
-				row[c] = full[i*W*H+r*W+c]
+				ch := full[i*W*H+r*W+c]
+				switch ch {
+				case '0':
+					row[c] = 2
+				case '1':
+					row[c] = 1
+				}
 			}
 			l[r] = row
 		}
