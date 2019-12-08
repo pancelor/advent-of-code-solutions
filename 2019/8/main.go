@@ -23,8 +23,8 @@ func count(l Layer, i int) int {
 func solve(layers []Layer) (interface{}, error) {
 	// 0 transparent, 1 not, 2 not
 	res := Layer{}
-	for _, l := range layers {
-		for r, row := range l.arr {
+	for i := len(layers) - 1; i >= 0; i-- {
+		for r, row := range layers[i].arr {
 			for c, x := range row {
 				if x != 0 {
 					res.arr[r][c] = x
@@ -36,7 +36,7 @@ func solve(layers []Layer) (interface{}, error) {
 	for _, row := range res.arr {
 		for _, x := range row {
 			switch x {
-			case 2:
+			case 1:
 				fmt.Printf("%d", x)
 			default:
 				fmt.Printf(" ")
