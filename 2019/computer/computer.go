@@ -187,9 +187,9 @@ func (cpu *CPU) NextOpcode() int {
 func (cpu *CPU) Run() {
 	go func() {
 		for cycles := 0; !cpu.halted; cycles++ {
-			if cycles%1000 == 0 {
-				fmt.Printf("cycles: %d\n", cycles)
-			}
+			// if cycles%1000 == 0 {
+			// 	fmt.Printf("cycles: %d\n", cycles)
+			// }
 			code := cpu.NextOpcode()
 
 			// fmt.Printf("node %s pc=%v code=%d modes=%v\n", cpu.name, cpu.pc, code, cpu.modes)

@@ -11,6 +11,9 @@ import (
 var assert = helpers.Assert
 var check = helpers.Check
 
+// Input is the type of input we pass to solve()
+type Input []int
+
 func solve(in Input) interface{} {
 	for _, val := range in {
 		fmt.Printf("val=%#v\n", val)
@@ -33,9 +36,6 @@ func main() {
 	answer := solve(input)
 	fmt.Printf("answer:\n%v\n", answer)
 }
-
-// Input is the type of input we pass to solve()
-type Input []int
 
 func getInput() (Input, error) {
 	lines, err := helpers.GetLines()
