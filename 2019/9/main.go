@@ -10,20 +10,22 @@ import (
 )
 
 func solve(memTemplate []int) (interface{}, error) {
-	mem := dupmem(memTemplate)
-	in := make(chan int, 10)
-	in <- 2
-	out, done := run("A", mem, in)
+	cpu := makeCPU("A")
+	cpu.makeMemory(memTemplate)
+	cpu.Run()
+	cpu.InChan <- 2
 
 	var res []int
 	for {
 		select {
-		case <-done:
+		case <-cpu.DoneChan:
 			return res, nil
-		case x := <-out:
+		case x := <-cpu.OutChan:
 			res = append(res, x)
 		}
 	}
+
+	return res, nil
 }
 
 // Modes represent argument parameter modes
@@ -47,19 +49,17 @@ func (m *Modes) getNext() int {
 	return m.get(m.ptr - 1)
 }
 
-func paramValue(mem []int, param int, relBase int, mode int) int {
+func makeParameter(cpu *CPU, mode int, val int) Parameter {
 	switch mode {
 	case 0:
-		ensureInbounds(mem, param)
-		return mem[param]
+		return ParamPointer{addr: val, cpu: cpu}
 	case 1:
-		return param
+		return ParamLiteral{val: val}
 	case 2:
-		ensureInbounds(mem, relBase+param)
-		return mem[relBase+param]
+		return ParamRelativePointer{addr: val, cpu: cpu}
 	}
-	assert(false, "bad paramValue")
-	return 0
+	assert(false, fmt.Sprintf("bad makeParameter mode %d", mode))
+	return nil
 }
 
 func parseOpcode(code int) (int, Modes, error) {
@@ -69,10 +69,10 @@ func parseOpcode(code int) (int, Modes, error) {
 	for i := len(s) - 3; i >= 0; i-- {
 		// fmt.Printf("i=%v\n", i)
 		// fmt.Printf("s[i]=%v, '0'=%v, ==?: %v\n", s[i], '0', s[i] == '0')
-		if s[i] == '1' {
-			modes = append(modes, 1)
-		} else if s[i] == '0' {
+		if s[i] == '0' {
 			modes = append(modes, 0)
+		} else if s[i] == '1' {
+			modes = append(modes, 1)
 		} else if s[i] == '2' {
 			modes = append(modes, 2)
 		} else {
@@ -85,211 +85,187 @@ func parseOpcode(code int) (int, Modes, error) {
 
 // CPU .
 type CPU struct {
+	Name     string
 	InChan   chan int
 	OutChan  chan int
 	DoneChan chan struct{}
 
 	pc      int
+	modes   Modes
+	mem     []int
 	relBase int
 	halted  bool
+	err     error
 }
 
-func makeCPU() CPU {
+func makeCPU(name string) CPU {
 	return CPU{
+		Name:     name,
 		InChan:   make(chan int),
 		OutChan:  make(chan int),
 		DoneChan: make(chan struct{}),
 	}
 }
 
-func run(name string, mem []int, inCh chan int) (chan int, chan struct{}) {
-	outCh := make(chan int)
-	doneCh := make(chan struct{})
+func (cpu *CPU) check(err error) {
+	check(err)
+}
+
+// NextOpcode changes cpu state to read the next opcode and set cpu.modes
+func (cpu *CPU) NextOpcode() int {
+	code := chomp(cpu.mem, &cpu.pc)
+	opcode, modes, err := parseOpcode(code)
+	cpu.check(err)
+
+	cpu.modes = modes
+	return opcode
+}
+
+// TODO opcode type
+
+// Parameter is a generic parameter
+type Parameter interface {
+	Get() int
+	Set(int)
+}
+
+// ParamPointer is a pointer to a location in memory
+type ParamPointer struct {
+	addr int
+	cpu  *CPU
+}
+
+// Get .
+func (p ParamPointer) Get() int {
+	ensureInbounds(p.cpu.mem, p.addr)
+	return p.cpu.mem[p.addr]
+}
+
+// Set .
+func (p ParamPointer) Set(x int) {
+	ensureInbounds(p.cpu.mem, p.addr)
+	p.cpu.mem[p.addr] = x
+}
+
+// ParamLiteral is a literal value
+type ParamLiteral struct {
+	val int
+}
+
+// Get .
+func (p ParamLiteral) Get() int {
+	return p.val
+}
+
+// Set .
+func (p ParamLiteral) Set(x int) {
+	panic("trying to Set a ParamLiteral")
+}
+
+// ParamRelativePointer is a pointer to a relative location in memory
+type ParamRelativePointer struct {
+	addr int
+	cpu  *CPU
+}
+
+// Get .
+func (p ParamRelativePointer) Get() int {
+	ensureInbounds(p.cpu.mem, p.cpu.relBase+p.addr)
+	return p.cpu.mem[p.cpu.relBase+p.addr]
+}
+
+// Set .
+func (p ParamRelativePointer) Set(x int) {
+	ensureInbounds(p.cpu.mem, p.cpu.relBase+p.addr)
+	p.cpu.mem[p.cpu.relBase+p.addr] = x
+}
+
+// NextParameter changes cpu state to return the next parameter at the pc
+func (cpu *CPU) NextParameter() Parameter {
+	v := chomp(cpu.mem, &cpu.pc)
+	return makeParameter(cpu, cpu.modes.getNext(), v)
+}
+
+// Run runs the cpu in a goroutine
+func (cpu *CPU) Run() {
 	go func() {
-		relBase := 0
-		pc := 0
-		var halt bool
-		for cycles := 0; !halt; cycles++ {
-			// if cycles%1000 == 0 {
-			// 	fmt.Printf("cycles: %d\n", cycles)
-			// }
-			var log strings.Builder
-			code := chomp(mem, &pc)
-			opcode, modes, err := parseOpcode(code)
-			check(err)
+		for cycles := 0; !cpu.halted; cycles++ {
+			if cycles%1000 == 0 {
+				fmt.Printf("cycles: %d\n", cycles)
+			}
+			code := cpu.NextOpcode()
 
-			// fmt.Printf("node %s pc=%v code=%d modes=%v\n", name, pc, code, modes)
-			// dump(mem, pc)
+			// fmt.Printf("node %s pc=%v code=%d modes=%v\n", cpu.name, cpu.pc, code, cpu.modes)
+			// cpu.dump()
 
-			fmt.Fprintf(&log, "pc=%4d ", pc)
-			fmt.Fprintf(&log, "code=%6d ", code)
-			switch opcode {
+			switch code {
 			case 1: // add
-				a := chomp(mem, &pc)
-				b := chomp(mem, &pc)
-				c := chomp(mem, &pc)
-				av := paramValue(mem, a, relBase, modes.getNext())
-				bv := paramValue(mem, b, relBase, modes.getNext())
-
-				var cv int
-				switch modes.getNext() {
-				case 0:
-					cv = c
-				case 1:
-					assert(false, "immediate mode output param")
-				case 2:
-					cv = c + relBase
-				}
-
-				fmt.Fprintf(&log, "add(%d,%d,%d): %d+%d->[%d] ", a, b, c, av, bv, cv)
-				ensureInbounds(mem, cv)
-				mem[cv] = av + bv
+				a := cpu.NextParameter()
+				b := cpu.NextParameter()
+				c := cpu.NextParameter()
+				c.Set(a.Get() + b.Get())
 			case 2: // mult
-				a := chomp(mem, &pc)
-				b := chomp(mem, &pc)
-				c := chomp(mem, &pc)
-
-				av := paramValue(mem, a, relBase, modes.getNext())
-				bv := paramValue(mem, b, relBase, modes.getNext())
-
-				var cv int
-				switch modes.getNext() {
-				case 0:
-					cv = c
-				case 1:
-					assert(false, "immediate mode output param")
-				case 2:
-					cv = c + relBase
-				}
-
-				fmt.Fprintf(&log, "mult(%d,%d,%d): %d*%d->[%d] ", a, b, c, av, bv, cv)
-				ensureInbounds(mem, cv)
-				mem[cv] = av * bv
+				a := cpu.NextParameter()
+				b := cpu.NextParameter()
+				c := cpu.NextParameter()
+				c.Set(a.Get() * b.Get())
 			case 3: // input
-				a := chomp(mem, &pc)
-				i := <-inCh
+				a := cpu.NextParameter()
+				i := <-cpu.InChan
 				// fmt.Printf("%s < %d\n", name, i)
-
-				var av int
-				switch modes.getNext() {
-				case 0:
-					av = a
-				case 1:
-					assert(false, "immediate mode output param")
-				case 2:
-					av = a + relBase
-				}
-
-				fmt.Fprintf(&log, "input(%d): %d->[%d] ", a, i, av)
-				ensureInbounds(mem, av)
-				mem[av] = i
+				a.Set(i)
 			case 4: // output
-				a := chomp(mem, &pc)
-				av := paramValue(mem, a, relBase, modes.getNext())
-
-				// fmt.Printf("%s : %d\n", name, av)
-				fmt.Fprintf(&log, "output(%d): ->%d ", a, av)
-
-				outCh <- av
+				a := cpu.NextParameter()
+				cpu.OutChan <- a.Get()
 			case 5: // jump-if-true
-				a := chomp(mem, &pc)
-				b := chomp(mem, &pc)
-				av := paramValue(mem, a, relBase, modes.getNext())
-				bv := paramValue(mem, b, relBase, modes.getNext())
-
-				fmt.Fprintf(&log, "jump-if-true(%d,%d): ", a, b)
-				if av != 0 {
-					fmt.Fprintf(&log, "%d!=0; jump to %d ", av, bv)
-					pc = bv
+				a := cpu.NextParameter()
+				b := cpu.NextParameter()
+				if a.Get() != 0 {
+					cpu.pc = b.Get()
 				}
 			case 6: // jump-if-false
-				a := chomp(mem, &pc)
-				b := chomp(mem, &pc)
-				av := paramValue(mem, a, relBase, modes.getNext())
-				bv := paramValue(mem, b, relBase, modes.getNext())
-
-				fmt.Fprintf(&log, "jump-if-false(%d,%d): ", a, b)
-				if av == 0 {
-					fmt.Fprintf(&log, "%d==0; jump to %d ", av, bv)
-					pc = bv
+				a := cpu.NextParameter()
+				b := cpu.NextParameter()
+				if a.Get() == 0 {
+					cpu.pc = b.Get()
 				}
 			case 7: // less than
-				a := chomp(mem, &pc)
-				b := chomp(mem, &pc)
-				c := chomp(mem, &pc)
-				av := paramValue(mem, a, relBase, modes.getNext())
-				bv := paramValue(mem, b, relBase, modes.getNext())
-
-				var cv int
-				switch modes.getNext() {
-				case 0:
-					cv = c
-				case 1:
-					assert(false, "immediate mode output param")
-				case 2:
-					cv = c + relBase
-				}
-
-				fmt.Fprintf(&log, "less-than(%d,%d,%d): %d<%d -> [%d] ", a, b, c, av, bv, cv)
-				if av < bv {
-					ensureInbounds(mem, cv)
-					mem[cv] = 1
+				a := cpu.NextParameter()
+				b := cpu.NextParameter()
+				c := cpu.NextParameter()
+				if a.Get() < b.Get() {
+					c.Set(1)
 				} else {
-					ensureInbounds(mem, cv)
-					mem[cv] = 0
+					c.Set(0)
 				}
 			case 8: // equals
-				a := chomp(mem, &pc)
-				b := chomp(mem, &pc)
-				c := chomp(mem, &pc)
-				av := paramValue(mem, a, relBase, modes.getNext())
-				bv := paramValue(mem, b, relBase, modes.getNext())
-
-				var cv int
-				switch modes.getNext() {
-				case 0:
-					cv = c
-				case 1:
-					assert(false, "immediate mode output param")
-				case 2:
-					cv = c + relBase
-				}
-
-				fmt.Fprintf(&log, "equals(%d,%d,%d): %d==%d -> [%d]", a, b, c, av, bv, cv)
-				if av == bv {
-					ensureInbounds(mem, cv)
-					mem[cv] = 1
+				a := cpu.NextParameter()
+				b := cpu.NextParameter()
+				c := cpu.NextParameter()
+				if a.Get() == b.Get() {
+					c.Set(1)
 				} else {
-					ensureInbounds(mem, cv)
-					mem[cv] = 0
+					c.Set(0)
 				}
 			case 9: // adjust relative parameter base
-				a := chomp(mem, &pc)
-				av := paramValue(mem, a, relBase, modes.getNext())
-
-				fmt.Fprintf(&log, "adjust-rel(%d): rp: %d+%d=%d", a, relBase, av, relBase+av)
-				relBase += av
+				a := cpu.NextParameter()
+				cpu.relBase += a.Get()
 			case 99: // halt
-				halt = true
-				fmt.Fprintf(&log, "halt()")
-				doneCh <- struct{}{}
+				cpu.halted = true
+				cpu.DoneChan <- struct{}{}
 			default:
-				panic(fmt.Errorf("Bad opcode %d at mem[%d]", mem[pc], pc))
+				panic("unknown opcode")
 			}
-			// fmt.Println(log.String())
 		}
 	}()
-
-	return outCh, doneCh
 }
 
 // MemSize .
 const MemSize = 5000
 
-func dupmem(mem []int) []int {
-	res := make([]int, MemSize)
-	copy(res, mem)
-	return res
+func (cpu *CPU) makeMemory(mem []int) {
+	cpu.mem = make([]int, MemSize)
+	copy(cpu.mem, mem)
 }
 
 func chomp(mem []int, pc *int) int {
@@ -305,9 +281,9 @@ func ensureInbounds(mem []int, ptr ...int) {
 	}
 }
 
-func dump(mem []int, pc int) {
-	fmt.Printf("pc=%d, mem=[", pc)
-	for i, v := range mem {
+func (cpu *CPU) dump() {
+	fmt.Printf("name=%s mem=[", cpu.Name)
+	for i, v := range cpu.mem {
 		if i%10 == 0 {
 			fmt.Printf("\n")
 		}
