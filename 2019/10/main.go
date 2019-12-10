@@ -41,8 +41,9 @@ func gcd(x, y int) int {
 
 func solve(input *Input) (interface{}, error) {
 	minBlocked := 1000
+	aBest := Asteroid{x: 0, y: 0}
 	for _, a1 := range input.list {
-		fmt.Printf("\nchecking (%d, %d)\n", a1.x, a1.y)
+		// fmt.Printf("\nchecking (%d, %d)\n", a1.x, a1.y)
 
 		blocked := make(map[Asteroid]bool)
 		for _, a2 := range input.list {
@@ -78,11 +79,76 @@ func solve(input *Input) (interface{}, error) {
 		nBlocked := len(blocked)
 		if nBlocked < minBlocked {
 			minBlocked = nBlocked
+			aBest = a1
 		}
-		fmt.Printf("A(%d,%d)=%d\n", a1.x, a1.y, nBlocked)
+		// fmt.Printf("A(%d,%d)=%d\n", a1.x, a1.y, nBlocked)
 	}
 
-	return len(input.list) - minBlocked - 1, nil
+	fmt.Printf("aBest=%#v\n", aBest)
+
+	a1 := aBest
+	depth := make(map[Asteroid]int)
+	for _, a2 := range input.list {
+		if a1 == a2 {
+			continue
+		}
+		if depth[a2] != 0 {
+			// fmt.Printf("skipping (%d, %d)\n", a2.x, a2.y)
+			continue
+		}
+		dx := a2.x - a1.x
+		dy := a2.y - a1.y
+		d := gcd(dx, dy)
+		// fmt.Printf("gcd(%d,%d)=%d\n", dx, dy, d)
+		dx /= d
+		dy /= d
+
+		x := a2.x
+		y := a2.y
+		n := 1
+		for {
+			x += dx
+			y += dy
+			if !(inbounds(x, 0, input.w) && inbounds(y, 0, input.h)) {
+				break
+			}
+			a3 := input.grid[y][x]
+			if a3 {
+				// fmt.Printf("found (%d, %d)\n", x, y)
+				depth[Asteroid{x: x, y: y}] = n
+				n++
+			}
+		}
+	}
+
+	maxDepth := 0
+	invertedDepths := invertMap(depth)
+	for k := range invertedDepths {
+		// fmt.Printf("|%#v: %#v\n", k, v)
+		if maxDepth < k {
+			maxDepth = k
+		}
+	}
+
+	// fmt.Printf("depth=%#v\n", depth)
+	// fmt.Printf("invertedDepths=%#v\n", invertedDepths)
+	fmt.Printf("%#v: %#v\n", maxDepth, invertedDepths[maxDepth])
+
+	return 0, nil
+}
+
+func invertMap(m map[Asteroid]int) map[int][]Asteroid {
+	res := make(map[int][]Asteroid)
+	for k, v := range m {
+		arr, prs := res[v]
+		if !prs {
+			// unecessary?
+			arr = make([]Asteroid, 0)
+		}
+		arr = append(arr, k)
+		res[v] = arr
+	}
+	return res
 }
 
 func test() {
