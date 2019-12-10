@@ -11,22 +11,57 @@ func inbounds(x, a, b int) bool {
 	return a <= x && x < b
 }
 
+func bubble(x, y *int) {
+	if *y < *x {
+		temp := *y
+		*y = *x
+		*x = temp
+	}
+}
+
+func abs(x int) int {
+	if x < 0 {
+		return -x
+	}
+	return x
+}
+
+func gcd(x, y int) int {
+	bubble(&x, &y)
+	x = abs(x)
+	y = abs(y)
+
+	// fmt.Println(x, y)
+	if x == 0 {
+		// fmt.Println(y)
+		return y
+	}
+	return gcd(x, y%x)
+}
+
 func solve(input *Input) (interface{}, error) {
 	minBlocked := 1000
 	for _, a1 := range input.list {
+		fmt.Printf("\nchecking (%d, %d)\n", a1.x, a1.y)
+
 		blocked := make(map[Asteroid]bool)
 		for _, a2 := range input.list {
 			if a1 == a2 {
 				continue
 			}
 			if blocked[a2] {
-				// fmt.Printf("skipping blocked asteroid at %d %d\n", a2.x, a2.y)
+				// fmt.Printf("skipping (%d, %d)\n", a2.x, a2.y)
 				continue
 			}
 			dx := a2.x - a1.x
 			dy := a2.y - a1.y
-			x := a1.x
-			y := a1.y
+			d := gcd(dx, dy)
+			// fmt.Printf("gcd(%d,%d)=%d\n", dx, dy, d)
+			dx /= d
+			dy /= d
+
+			x := a2.x
+			y := a2.y
 			for {
 				x += dx
 				y += dy
@@ -35,7 +70,7 @@ func solve(input *Input) (interface{}, error) {
 				}
 				a3 := input.grid[y][x]
 				if a3 {
-					// fmt.Printf("found blocked asteroid at %d %d\n", x, y)
+					// fmt.Printf("found (%d, %d)\n", x, y)
 					blocked[Asteroid{x: x, y: y}] = true
 				}
 			}
@@ -44,13 +79,16 @@ func solve(input *Input) (interface{}, error) {
 		if nBlocked < minBlocked {
 			minBlocked = nBlocked
 		}
+		fmt.Printf("A(%d,%d)=%d\n", a1.x, a1.y, nBlocked)
 	}
 
-	return len(input.list) - minBlocked, nil
+	return len(input.list) - minBlocked - 1, nil
 }
 
 func test() {
-	assert(true, "t1")
+	assert(gcd(6, 10) == 2, "t1")
+	assert(gcd(2, 10) == 2, "t2")
+	assert(gcd(3, 5) == 1, "t3")
 
 	// assert(false, "exit after tests")
 }
@@ -129,7 +167,9 @@ func getInput() (*Input, error) {
 				panic(fmt.Sprintf("bad input char '%s'", ch))
 			}
 			gridLine = append(gridLine, v)
-			list = append(list, Asteroid{x: c, y: r})
+			if v {
+				list = append(list, Asteroid{x: c, y: r})
+			}
 		}
 		grid = append(grid, gridLine)
 	}
