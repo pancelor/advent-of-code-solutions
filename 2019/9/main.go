@@ -91,13 +91,16 @@ func run(name string, mem []int, inCh chan int) (chan int, chan struct{}) {
 		pc := -1
 		var halt bool
 		for !halt {
+			var log strings.Builder
 			code := chomp(mem, &pc)
 			opcode, modes, err := parseOpcode(code)
 			check(err)
 
-			fmt.Printf("node %s pc=%v\n", name, pc)
+			// fmt.Printf("node %s pc=%v code=%d modes=%v\n", name, pc, code, modes)
 			// dump(mem, pc)
 
+			fmt.Fprintf(&log, "pc=%d ", pc)
+			fmt.Fprintf(&log, "code=%d ", code)
 			switch opcode {
 			case 1: // add
 				a := chomp(mem, &pc)
@@ -106,9 +109,19 @@ func run(name string, mem []int, inCh chan int) (chan int, chan struct{}) {
 				av := paramValue(mem, a, relBase, modes.getNext())
 				bv := paramValue(mem, b, relBase, modes.getNext())
 				ensureInbounds(mem, c)
-				assert(modes.getNext() == 0, "immediate mode output param")
 
-				mem[c] = av + bv
+				var cv int
+				switch modes.getNext() {
+				case 0:
+					cv = c
+				case 1:
+					assert(false, "immediate mode output param")
+				case 2:
+					cv = c + relBase
+				}
+
+				fmt.Fprintf(&log, "add(%d,%d,%d): %d+%d->%d ", a, b, c, av, bv, cv)
+				mem[cv] = av + bv
 			case 2: // mult
 				a := chomp(mem, &pc)
 				b := chomp(mem, &pc)
@@ -116,29 +129,54 @@ func run(name string, mem []int, inCh chan int) (chan int, chan struct{}) {
 				av := paramValue(mem, a, relBase, modes.getNext())
 				bv := paramValue(mem, b, relBase, modes.getNext())
 				ensureInbounds(mem, c)
-				assert(modes.getNext() == 0, "immediate mode output param")
 
-				mem[c] = av * bv
+				var cv int
+				switch modes.getNext() {
+				case 0:
+					cv = c
+				case 1:
+					assert(false, "immediate mode output param")
+				case 2:
+					cv = c + relBase
+				}
+
+				fmt.Fprintf(&log, "mult(%d,%d,%d): %d+%d->%d ", a, b, c, av, bv, cv)
+				mem[cv] = av * bv
 			case 3: // input
 				a := chomp(mem, &pc)
 				ensureInbounds(mem, a)
-				assert(modes.getNext() == 0, "immediate mode output param")
 				i := <-inCh
 				// fmt.Printf("%s < %d\n", name, i)
 
-				mem[a] = i
+				var av int
+				switch modes.getNext() {
+				case 0:
+					av = a
+				case 1:
+					assert(false, "immediate mode output param")
+				case 2:
+					av = a + relBase
+				}
+
+				fmt.Fprintf(&log, "input(%d): %d->%d ", a, i, av)
+				mem[av] = i
 			case 4: // output
 				a := chomp(mem, &pc)
 				av := paramValue(mem, a, relBase, modes.getNext())
 
 				// fmt.Printf("%s : %d\n", name, av)
+				fmt.Fprintf(&log, "output(%d): ->%d ", a, av)
+
 				outCh <- av
 			case 5: // jump-if-true
 				a := chomp(mem, &pc)
 				b := chomp(mem, &pc)
 				av := paramValue(mem, a, relBase, modes.getNext())
 				bv := paramValue(mem, b, relBase, modes.getNext())
+
+				fmt.Fprintf(&log, "jump-if-true(%d,%d): ", a, b)
 				if av != 0 {
+					fmt.Fprintf(&log, "%d!=0; jump to %d ", av, bv)
 					pc = bv - 1 // pc will increment next chomp
 				}
 			case 6: // jump-if-false
@@ -146,7 +184,10 @@ func run(name string, mem []int, inCh chan int) (chan int, chan struct{}) {
 				b := chomp(mem, &pc)
 				av := paramValue(mem, a, relBase, modes.getNext())
 				bv := paramValue(mem, b, relBase, modes.getNext())
+
+				fmt.Fprintf(&log, "jump-if-false(%d,%d): ", a, b)
 				if av == 0 {
+					fmt.Fprintf(&log, "%d==0; jump to %d ", av, bv)
 					pc = bv - 1 // pc will increment next chomp
 				}
 			case 7: // less than
@@ -155,13 +196,23 @@ func run(name string, mem []int, inCh chan int) (chan int, chan struct{}) {
 				c := chomp(mem, &pc)
 				av := paramValue(mem, a, relBase, modes.getNext())
 				bv := paramValue(mem, b, relBase, modes.getNext())
-				assert(modes.getNext() == 0, "immediate mode output param")
-				ensureInbounds(mem, c)
 
+				var cv int
+				switch modes.getNext() {
+				case 0:
+					cv = c
+				case 1:
+					assert(false, "immediate mode output param")
+				case 2:
+					cv = c + relBase
+				}
+				ensureInbounds(mem, cv)
+
+				fmt.Fprintf(&log, "less-than(%d,%d,%d): %d<%d -> %d ", a, b, c, av, bv, cv)
 				if av < bv {
-					mem[c] = 1
+					mem[cv] = 1
 				} else {
-					mem[c] = 0
+					mem[cv] = 0
 				}
 			case 8: // equals
 				a := chomp(mem, &pc)
@@ -169,25 +220,38 @@ func run(name string, mem []int, inCh chan int) (chan int, chan struct{}) {
 				c := chomp(mem, &pc)
 				av := paramValue(mem, a, relBase, modes.getNext())
 				bv := paramValue(mem, b, relBase, modes.getNext())
-				assert(modes.getNext() == 0, "immediate mode output param")
-				ensureInbounds(mem, c)
 
+				var cv int
+				switch modes.getNext() {
+				case 0:
+					cv = c
+				case 1:
+					assert(false, "immediate mode output param")
+				case 2:
+					cv = c + relBase
+				}
+				ensureInbounds(mem, cv)
+
+				fmt.Fprintf(&log, "equals(%d,%d,%d): %d==%d -> %d", a, b, c, av, bv, cv)
 				if av == bv {
-					mem[c] = 1
+					mem[cv] = 1
 				} else {
-					mem[c] = 0
+					mem[cv] = 0
 				}
 			case 9: // adjust relative parameter base
 				a := chomp(mem, &pc)
 				av := paramValue(mem, a, relBase, modes.getNext())
 
+				fmt.Fprintf(&log, "adjust-rel(%d): %d += %d", a, relBase, av)
 				relBase += av
 			case 99: // halt
 				halt = true
+				fmt.Fprintf(&log, "halt()")
 				doneCh <- struct{}{}
 			default:
 				panic(fmt.Errorf("Bad opcode %d at mem[%d]", mem[pc], pc))
 			}
+			fmt.Println(log.String())
 		}
 	}()
 
