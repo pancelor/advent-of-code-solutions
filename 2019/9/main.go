@@ -12,7 +12,7 @@ import (
 func solve(memTemplate []int) (interface{}, error) {
 	mem := dupmem(memTemplate)
 	in := make(chan int, 10)
-	in <- 81
+	in <- 1
 	out, done := run("A", mem, in)
 
 	var res []int
@@ -120,7 +120,7 @@ func run(name string, mem []int, inCh chan int) (chan int, chan struct{}) {
 					cv = c + relBase
 				}
 
-				fmt.Fprintf(&log, "add(%d,%d,%d): %d+%d->%d ", a, b, c, av, bv, cv)
+				fmt.Fprintf(&log, "add(%d,%d,%d): %d+%d->[%d] ", a, b, c, av, bv, cv)
 				mem[cv] = av + bv
 			case 2: // mult
 				a := chomp(mem, &pc)
@@ -140,7 +140,7 @@ func run(name string, mem []int, inCh chan int) (chan int, chan struct{}) {
 					cv = c + relBase
 				}
 
-				fmt.Fprintf(&log, "mult(%d,%d,%d): %d+%d->%d ", a, b, c, av, bv, cv)
+				fmt.Fprintf(&log, "mult(%d,%d,%d): %d+%d->[%d] ", a, b, c, av, bv, cv)
 				mem[cv] = av * bv
 			case 3: // input
 				a := chomp(mem, &pc)
@@ -158,7 +158,7 @@ func run(name string, mem []int, inCh chan int) (chan int, chan struct{}) {
 					av = a + relBase
 				}
 
-				fmt.Fprintf(&log, "input(%d): %d->%d ", a, i, av)
+				fmt.Fprintf(&log, "input(%d): %d->[%d] ", a, i, av)
 				mem[av] = i
 			case 4: // output
 				a := chomp(mem, &pc)
@@ -208,7 +208,7 @@ func run(name string, mem []int, inCh chan int) (chan int, chan struct{}) {
 				}
 				ensureInbounds(mem, cv)
 
-				fmt.Fprintf(&log, "less-than(%d,%d,%d): %d<%d -> %d ", a, b, c, av, bv, cv)
+				fmt.Fprintf(&log, "less-than(%d,%d,%d): %d<%d -> [%d] ", a, b, c, av, bv, cv)
 				if av < bv {
 					mem[cv] = 1
 				} else {
@@ -232,7 +232,7 @@ func run(name string, mem []int, inCh chan int) (chan int, chan struct{}) {
 				}
 				ensureInbounds(mem, cv)
 
-				fmt.Fprintf(&log, "equals(%d,%d,%d): %d==%d -> %d", a, b, c, av, bv, cv)
+				fmt.Fprintf(&log, "equals(%d,%d,%d): %d==%d -> [%d]", a, b, c, av, bv, cv)
 				if av == bv {
 					mem[cv] = 1
 				} else {
@@ -242,7 +242,7 @@ func run(name string, mem []int, inCh chan int) (chan int, chan struct{}) {
 				a := chomp(mem, &pc)
 				av := paramValue(mem, a, relBase, modes.getNext())
 
-				fmt.Fprintf(&log, "adjust-rel(%d): %d += %d", a, relBase, av)
+				fmt.Fprintf(&log, "adjust-rel(%d): rp: %d ... %d", a, relBase, relBase+av)
 				relBase += av
 			case 99: // halt
 				halt = true
