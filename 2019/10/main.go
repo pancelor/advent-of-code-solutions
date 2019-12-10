@@ -5,16 +5,48 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strconv"
 )
 
-func solve(input []int) (interface{}, error) {
-	for _, val := range input {
-		fmt.Printf("val=%#v\n", val)
+func inbounds(x, a, b int) bool {
+	return a <= x && x < b
+}
+
+func solve(input *Input) (interface{}, error) {
+	minBlocked := 1000
+	for _, a1 := range input.list {
+		blocked := make(map[Asteroid]bool)
+		for _, a2 := range input.list {
+			if a1 == a2 {
+				continue
+			}
+			if blocked[a2] {
+				// fmt.Printf("skipping blocked asteroid at %d %d\n", a2.x, a2.y)
+				continue
+			}
+			dx := a2.x - a1.x
+			dy := a2.y - a1.y
+			x := a1.x
+			y := a1.y
+			for {
+				x += dx
+				y += dy
+				if !(inbounds(x, 0, input.w) && inbounds(y, 0, input.h)) {
+					break
+				}
+				a3 := input.grid[y][x]
+				if a3 {
+					// fmt.Printf("found blocked asteroid at %d %d\n", x, y)
+					blocked[Asteroid{x: x, y: y}] = true
+				}
+			}
+		}
+		nBlocked := len(blocked)
+		if nBlocked < minBlocked {
+			minBlocked = nBlocked
+		}
 	}
 
-	answer := "unimplemented"
-	return answer, nil
+	return len(input.list) - minBlocked, nil
 }
 
 func test() {
@@ -59,27 +91,56 @@ func assert(b bool, msg string) {
 
 var source = os.Stdin
 
-func getInput() ([]int, error) {
+// Asteroid .
+type Asteroid struct {
+	x int
+	y int
+}
+
+// Input .
+type Input struct {
+	list []Asteroid
+	grid [][]bool
+	w    int
+	h    int
+}
+
+func getInput() (*Input, error) {
 	lines, err := getLines()
 	if err != nil {
 		return nil, err
 	}
 
-	var res []int
-	for _, l := range lines {
+	var grid [][]bool
+	var list []Asteroid
+	for r, l := range lines {
 		if l == "" {
 			continue
 		}
-
-		v, err := strconv.Atoi(l)
-		if err != nil {
-			return nil, err
+		var gridLine []bool
+		for c, ch := range []byte(l) {
+			var v bool
+			switch ch {
+			case '.':
+				v = false
+			case '#':
+				v = true
+			default:
+				panic(fmt.Sprintf("bad input char '%s'", ch))
+			}
+			gridLine = append(gridLine, v)
+			list = append(list, Asteroid{x: c, y: r})
 		}
-
-		res = append(res, v)
+		grid = append(grid, gridLine)
 	}
 
-	return res, nil
+	res := Input{
+		list: list,
+		grid: grid,
+		w:    len(grid[0]),
+		h:    len(grid),
+	}
+	return &res, nil
 }
 
 func getLines() ([]string, error) {
