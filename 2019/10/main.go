@@ -41,9 +41,10 @@ func gcd(x, y int) int {
 	return gcd(x, y%x)
 }
 
+var aBest Asteroid
+
 func solve(input *Input) (interface{}, error) {
 	minBlocked := 1000
-	aBest := Asteroid{x: 0, y: 0}
 	for _, a1 := range input.list {
 		// fmt.Printf("\nchecking (%d, %d)\n", a1.x, a1.y)
 
@@ -135,7 +136,7 @@ func solve(input *Input) (interface{}, error) {
 
 	// fmt.Printf("depth=%#v\n", depth)
 	// fmt.Printf("invertedDepths=%#v\n", invertedDepths)
-	fmt.Printf("%d: %v\n", maxDepth, invertedDepths[maxDepth])
+	// fmt.Printf("%d: %v\n", maxDepth, invertedDepths[maxDepth])
 
 	vaporized := 0
 	for i := 0; i < 10000; i++ {
@@ -145,7 +146,7 @@ func solve(input *Input) (interface{}, error) {
 		if vaporized+dV > 200 {
 			sort.Sort(ByAngle(layer))
 			fmt.Printf("find #%d of %v\n", 200-vaporized, layer)
-			return layer[200-vaporized], nil
+			return layer[200-vaporized-1], nil
 		}
 		vaporized += dV
 	}
@@ -158,7 +159,11 @@ type ByAngle []Asteroid
 func (a ByAngle) Len() int      { return len(a) }
 func (a ByAngle) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
 func (a ByAngle) Less(i, j int) bool {
-	return clockAngle(a[i].x-11, -(a[i].y-19)) < clockAngle(a[j].x-11, -(a[j].y-19))
+	return jankyClockAngle(a[i]) < jankyClockAngle(a[j])
+}
+
+func jankyClockAngle(a Asteroid) float64 {
+	return clockAngle(a.x-aBest.x, -(a.y - aBest.y))
 }
 
 func clockAngle(x, y int) float64 {
