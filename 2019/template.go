@@ -1,15 +1,18 @@
 package main
 
 import (
-	"bufio"
-	"errors"
 	"fmt"
-	"os"
 	"strconv"
+	"strings"
+
+	"github.com/pancelor/advent-of-code-solutions/2019/helpers"
 )
 
-func solve(input []int) (interface{}, error) {
-	for _, val := range input {
+var assert = helpers.Assert
+var check = helpers.Check
+
+func solve(in Input) interface{} {
+	for _, val := range in {
 		fmt.Printf("val=%#v\n", val)
 	}
 
@@ -17,56 +20,31 @@ func solve(input []int) (interface{}, error) {
 	return answer, nil
 }
 
-func test() {
+func init() {
+	// tests go here
 	assert(true, "t1")
 
 	// assert(false, "exit after tests")
 }
 
 func main() {
-	test()
-
 	input, err := getInput()
-	if err != nil {
-		panic(err)
-	}
-
-	answer, err := solve(input)
-	if err != nil {
-		panic(err)
-	}
-
+	check(err)
+	answer := solve(input)
 	fmt.Printf("answer:\n%v\n", answer)
 }
 
-//
-// helpers
-//
+// Input is the type of input we pass to solve()
+type Input []int
 
-// for temporary use only
-func check(err error) {
-	if err != nil {
-		panic(err)
-	}
-}
-
-// for temporary use only
-func assert(b bool, msg string) {
-	if !b {
-		panic(errors.New(msg))
-	}
-}
-
-var source = os.Stdin
-
-func getInput() ([]int, error) {
-	lines, err := getLines()
+func getInput() (Input, error) {
+	lines, err := helpers.GetLines()
 	if err != nil {
 		return nil, err
 	}
 
 	var res []int
-	for _, l := range lines {
+	for _, l := range strings.Split(lines[0], ",") {
 		if l == "" {
 			continue
 		}
@@ -76,17 +54,15 @@ func getInput() ([]int, error) {
 			return nil, err
 		}
 
+		// var dirCode string
+		// var dist int
+		// _, err := fmt.Sscanf(token, "%1s%d", &dirCode, &dist)
+		// if err != nil {
+		// 	return res, err
+		// }
+
 		res = append(res, v)
 	}
 
 	return res, nil
-}
-
-func getLines() ([]string, error) {
-	var lines []string
-	scanner := bufio.NewScanner(source)
-	for scanner.Scan() {
-		lines = append(lines, scanner.Text())
-	}
-	return lines, scanner.Err()
 }
