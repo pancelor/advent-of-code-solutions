@@ -12,7 +12,7 @@ import (
 func solve(memTemplate []int) (interface{}, error) {
 	mem := dupmem(memTemplate)
 	in := make(chan int, 10)
-	in <- 1
+	in <- 2
 	out, done := run("A", mem, in)
 
 	var res []int
@@ -90,7 +90,10 @@ func run(name string, mem []int, inCh chan int) (chan int, chan struct{}) {
 		relBase := 0
 		pc := -1
 		var halt bool
-		for !halt {
+		for cycles := 0; !halt; cycles++ {
+			// if cycles%1000 == 0 {
+			// 	fmt.Printf("cycles: %d\n", cycles)
+			// }
 			var log strings.Builder
 			code := chomp(mem, &pc)
 			opcode, modes, err := parseOpcode(code)
@@ -99,8 +102,8 @@ func run(name string, mem []int, inCh chan int) (chan int, chan struct{}) {
 			// fmt.Printf("node %s pc=%v code=%d modes=%v\n", name, pc, code, modes)
 			// dump(mem, pc)
 
-			fmt.Fprintf(&log, "pc=%d ", pc)
-			fmt.Fprintf(&log, "code=%d ", code)
+			fmt.Fprintf(&log, "pc=%4d ", pc)
+			fmt.Fprintf(&log, "code=%6d ", code)
 			switch opcode {
 			case 1: // add
 				a := chomp(mem, &pc)
@@ -108,7 +111,6 @@ func run(name string, mem []int, inCh chan int) (chan int, chan struct{}) {
 				c := chomp(mem, &pc)
 				av := paramValue(mem, a, relBase, modes.getNext())
 				bv := paramValue(mem, b, relBase, modes.getNext())
-				ensureInbounds(mem, c)
 
 				var cv int
 				switch modes.getNext() {
@@ -121,14 +123,15 @@ func run(name string, mem []int, inCh chan int) (chan int, chan struct{}) {
 				}
 
 				fmt.Fprintf(&log, "add(%d,%d,%d): %d+%d->[%d] ", a, b, c, av, bv, cv)
+				ensureInbounds(mem, cv)
 				mem[cv] = av + bv
 			case 2: // mult
 				a := chomp(mem, &pc)
 				b := chomp(mem, &pc)
 				c := chomp(mem, &pc)
+
 				av := paramValue(mem, a, relBase, modes.getNext())
 				bv := paramValue(mem, b, relBase, modes.getNext())
-				ensureInbounds(mem, c)
 
 				var cv int
 				switch modes.getNext() {
@@ -140,11 +143,11 @@ func run(name string, mem []int, inCh chan int) (chan int, chan struct{}) {
 					cv = c + relBase
 				}
 
-				fmt.Fprintf(&log, "mult(%d,%d,%d): %d+%d->[%d] ", a, b, c, av, bv, cv)
+				fmt.Fprintf(&log, "mult(%d,%d,%d): %d*%d->[%d] ", a, b, c, av, bv, cv)
+				ensureInbounds(mem, cv)
 				mem[cv] = av * bv
 			case 3: // input
 				a := chomp(mem, &pc)
-				ensureInbounds(mem, a)
 				i := <-inCh
 				// fmt.Printf("%s < %d\n", name, i)
 
@@ -159,6 +162,7 @@ func run(name string, mem []int, inCh chan int) (chan int, chan struct{}) {
 				}
 
 				fmt.Fprintf(&log, "input(%d): %d->[%d] ", a, i, av)
+				ensureInbounds(mem, av)
 				mem[av] = i
 			case 4: // output
 				a := chomp(mem, &pc)
@@ -206,12 +210,13 @@ func run(name string, mem []int, inCh chan int) (chan int, chan struct{}) {
 				case 2:
 					cv = c + relBase
 				}
-				ensureInbounds(mem, cv)
 
 				fmt.Fprintf(&log, "less-than(%d,%d,%d): %d<%d -> [%d] ", a, b, c, av, bv, cv)
 				if av < bv {
+					ensureInbounds(mem, cv)
 					mem[cv] = 1
 				} else {
+					ensureInbounds(mem, cv)
 					mem[cv] = 0
 				}
 			case 8: // equals
@@ -230,19 +235,20 @@ func run(name string, mem []int, inCh chan int) (chan int, chan struct{}) {
 				case 2:
 					cv = c + relBase
 				}
-				ensureInbounds(mem, cv)
 
 				fmt.Fprintf(&log, "equals(%d,%d,%d): %d==%d -> [%d]", a, b, c, av, bv, cv)
 				if av == bv {
+					ensureInbounds(mem, cv)
 					mem[cv] = 1
 				} else {
+					ensureInbounds(mem, cv)
 					mem[cv] = 0
 				}
 			case 9: // adjust relative parameter base
 				a := chomp(mem, &pc)
 				av := paramValue(mem, a, relBase, modes.getNext())
 
-				fmt.Fprintf(&log, "adjust-rel(%d): rp: %d ... %d", a, relBase, relBase+av)
+				fmt.Fprintf(&log, "adjust-rel(%d): rp: %d+%d=%d", a, relBase, av, relBase+av)
 				relBase += av
 			case 99: // halt
 				halt = true
@@ -251,7 +257,7 @@ func run(name string, mem []int, inCh chan int) (chan int, chan struct{}) {
 			default:
 				panic(fmt.Errorf("Bad opcode %d at mem[%d]", mem[pc], pc))
 			}
-			fmt.Println(log.String())
+			// fmt.Println(log.String())
 		}
 	}()
 
@@ -275,7 +281,7 @@ func chomp(mem []int, pc *int) int {
 
 func ensureInbounds(mem []int, ptr ...int) {
 	for _, p := range ptr {
-		assert(0 <= p && p < len(mem), "oob")
+		assert(0 <= p && p < len(mem), fmt.Sprintf("oob: %d", p))
 	}
 }
 
