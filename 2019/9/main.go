@@ -83,12 +83,31 @@ func parseOpcode(code int) (int, Modes, error) {
 	return opcode, Modes{modes: modes}, nil
 }
 
+// CPU .
+type CPU struct {
+	InChan   chan int
+	OutChan  chan int
+	DoneChan chan struct{}
+
+	pc      int
+	relBase int
+	halted  bool
+}
+
+func makeCPU() CPU {
+	return CPU{
+		InChan:   make(chan int),
+		OutChan:  make(chan int),
+		DoneChan: make(chan struct{}),
+	}
+}
+
 func run(name string, mem []int, inCh chan int) (chan int, chan struct{}) {
 	outCh := make(chan int)
 	doneCh := make(chan struct{})
 	go func() {
 		relBase := 0
-		pc := -1
+		pc := 0
 		var halt bool
 		for cycles := 0; !halt; cycles++ {
 			// if cycles%1000 == 0 {
@@ -181,7 +200,7 @@ func run(name string, mem []int, inCh chan int) (chan int, chan struct{}) {
 				fmt.Fprintf(&log, "jump-if-true(%d,%d): ", a, b)
 				if av != 0 {
 					fmt.Fprintf(&log, "%d!=0; jump to %d ", av, bv)
-					pc = bv - 1 // pc will increment next chomp
+					pc = bv
 				}
 			case 6: // jump-if-false
 				a := chomp(mem, &pc)
@@ -192,7 +211,7 @@ func run(name string, mem []int, inCh chan int) (chan int, chan struct{}) {
 				fmt.Fprintf(&log, "jump-if-false(%d,%d): ", a, b)
 				if av == 0 {
 					fmt.Fprintf(&log, "%d==0; jump to %d ", av, bv)
-					pc = bv - 1 // pc will increment next chomp
+					pc = bv
 				}
 			case 7: // less than
 				a := chomp(mem, &pc)
@@ -274,9 +293,10 @@ func dupmem(mem []int) []int {
 }
 
 func chomp(mem []int, pc *int) int {
-	*pc++
 	ensureInbounds(mem, *pc)
-	return mem[*pc]
+	res := mem[*pc]
+	*pc++
+	return res
 }
 
 func ensureInbounds(mem []int, ptr ...int) {
