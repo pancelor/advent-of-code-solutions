@@ -164,9 +164,9 @@ type CPU struct {
 func MakeCPU(name string) CPU {
 	return CPU{
 		Name:     name,
-		InChan:   make(chan int),
-		OutChan:  make(chan int),
-		DoneChan: make(chan struct{}),
+		InChan:   make(chan int, 1),
+		OutChan:  make(chan int, 1),
+		DoneChan: make(chan struct{}, 1),
 	}
 }
 
@@ -250,7 +250,7 @@ func (cpu *CPU) Run() {
 				cpu.Halted = true
 				cpu.DoneChan <- struct{}{}
 				close(cpu.DoneChan)
-				close(cpu.InChan)
+				// close(cpu.InChan) // can cause race conditions in typical use
 				close(cpu.OutChan)
 			default:
 				panic("unknown opcode")
@@ -284,4 +284,39 @@ func (cpu *CPU) dump() {
 		fmt.Printf("%3d ", v)
 	}
 	fmt.Printf("\n]\n")
+}
+
+
+// MockCPU is useful for testing
+type MockCPU struct {
+	InChan chan int
+	OutChan chan int
+	DoneChan chan struct{}
+	Halted bool
+}
+
+// MakeMockCPU makes a mock CPU that will ignore inputs
+// and output the given outputs
+func MakeMockCPU(outputs []int) *MockCPU {
+	mock := MockCPU{
+		InChan: make(chan int, 1),
+		OutChan: make(chan int, 1),
+		DoneChan: make(chan struct{}, 1),
+	}
+
+	// ignore input
+	go func() {
+		for _ = range mock.InChan {}
+	}()
+
+	// produce output
+	go func() {
+		for _, x := range outputs {
+			mock.OutChan <- x
+		}
+		mock.Halted = true
+		mock.DoneChan <- struct{}{}
+	}()
+
+	return &mock
 }

@@ -105,7 +105,7 @@ func solve(prog Input) interface{} {
 	cpu.Run()
 	// cpu := makeFakeCPU([]int{1,0,0,0,1,0,1,0})
 	// cpu := makeFakeCPU([]int{1,0,0,0,1,0,1,0,0,1,1,0,1,0})
-	pos := point{0,0}
+	pos := point{x:0,y:0}
 	dir := 1
 	colors[pos] = color(1)
 	for !cpu.Halted {
@@ -126,36 +126,7 @@ func solve(prog Input) interface{} {
 
 	draw(colors, pos, dir)
 
-	return len(colors)
-}
-
-type fakeCPU struct {
-	InChan chan int
-	OutChan chan int
-	DoneChan chan struct{}
-	Halted bool
-}
-
-func makeFakeCPU(outputs []int) *fakeCPU {
-	fake := fakeCPU{
-		InChan: make(chan int),
-		OutChan: make(chan int),
-		DoneChan: make(chan struct{}),
-	}
-
-	go func() {
-		for _ = range fake.InChan {}
-	}()
-
-	go func() {
-		for _, x := range outputs {
-			fake.OutChan <- x
-		}
-		fake.Halted = true
-		fake.DoneChan <- struct{}{}
-	}()
-
-	return &fake
+	return nil
 }
 
 func main() {
