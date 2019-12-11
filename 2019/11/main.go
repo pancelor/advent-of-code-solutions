@@ -83,8 +83,8 @@ func dirString(dir int) string {
 }
 
 func draw(colors map[point]color, pos point, dir int) {
-	for y := -5; y < 6; y++ {
-		for x := -5; x < 6; x++ {
+	for y := -5; y < 10; y++ {
+		for x := -5; x < 55; x++ {
 			p := point{x:x, y:y}
 			if p == pos {
 				fmt.Printf("%s", dirString(dir))
@@ -107,6 +107,7 @@ func solve(prog Input) interface{} {
 	// cpu := makeFakeCPU([]int{1,0,0,0,1,0,1,0,0,1,1,0,1,0})
 	pos := point{0,0}
 	dir := 1
+	colors[pos] = color(1)
 	for !cpu.Halted {
 		currentColor := colors[pos]
 		cpu.InChan <- int(currentColor)
