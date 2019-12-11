@@ -20,7 +20,7 @@ func solve(in Input) interface{} {
 	}
 
 	answer := "unimplemented"
-	return answer, nil
+	return answer
 }
 
 func init() {

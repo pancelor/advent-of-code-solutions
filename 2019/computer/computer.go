@@ -152,13 +152,12 @@ type CPU struct {
 	InChan   chan int
 	OutChan  chan int
 	DoneChan chan struct{}
+	Halted  bool
 
 	pc      int
 	modes   paramModes
 	mem     []int
 	relBase int
-	halted  bool
-	err     error
 }
 
 // MakeCPU makes a CPU
@@ -186,7 +185,7 @@ func (cpu *CPU) NextOpcode() int {
 // Run runs the cpu in a goroutine
 func (cpu *CPU) Run() {
 	go func() {
-		for cycles := 0; !cpu.halted; cycles++ {
+		for cycles := 0; !cpu.Halted; cycles++ {
 			// if cycles%1000 == 0 {
 			// 	fmt.Printf("cycles: %d\n", cycles)
 			// }
@@ -248,8 +247,11 @@ func (cpu *CPU) Run() {
 				a := cpu.NextParameter()
 				cpu.relBase += a.Get()
 			case 99: // halt
-				cpu.halted = true
+				cpu.Halted = true
 				cpu.DoneChan <- struct{}{}
+				close(cpu.DoneChan)
+				close(cpu.InChan)
+				close(cpu.OutChan)
 			default:
 				panic("unknown opcode")
 			}
