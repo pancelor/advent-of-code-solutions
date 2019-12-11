@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/pancelor/advent-of-code-solutions/2019/helpers"
-	// "github.com/pancelor/advent-of-code-solutions/2019/computer"
+	"github.com/pancelor/advent-of-code-solutions/2019/computer"
 )
 
 var assert = helpers.Assert
@@ -58,13 +58,53 @@ func init() {
 
 type color int
 
+func (c color) String() string {
+	switch c {
+	case 0:
+		return "."
+	case 1:
+		return "#"
+	}
+	return "?"
+}
+
+func dirString(dir int) string {
+	switch (dir) {
+	case 0:
+		return ">"
+	case 1:
+		return "^"
+	case 2:
+		return "<"
+	case 3:
+		return "v"
+	}
+	return "?"
+}
+
+func draw(colors map[point]color, pos point, dir int) {
+	for y := -5; y < 6; y++ {
+		for x := -5; x < 6; x++ {
+			p := point{x:x, y:y}
+			if p == pos {
+				fmt.Printf("%s", dirString(dir))
+			} else {
+				c := colors[p]
+				fmt.Printf("%s", c.String())
+			}
+		}
+		fmt.Printf("\n")
+	}
+}
+
 func solve(prog Input) interface{} {
 	colors := make(map[point]color)
 
-	// cpu := computer.MakeCPU("daniel")
-	// cpu.SetMemory(prog)
-	// cpu.Run()
-	cpu := makeFakeCPU([]int{1,0,0,0,1,0,1,0})
+	cpu := computer.MakeCPU("daniel")
+	cpu.SetMemory(prog)
+	cpu.Run()
+	// cpu := makeFakeCPU([]int{1,0,0,0,1,0,1,0})
+	// cpu := makeFakeCPU([]int{1,0,0,0,1,0,1,0,0,1,1,0,1,0})
 	pos := point{0,0}
 	dir := 1
 	for !cpu.Halted {
@@ -79,12 +119,11 @@ func solve(prog Input) interface{} {
 			dir = changeDir(dir, dDir)
 			pos = pos.addDir(dir, 1)
 		case <-cpu.DoneChan:
-			fmt.Println("done", cpu.Halted)
+			fmt.Printf("done\n")
 		}
 	}
 
-	fmt.Println(colors)
-	fmt.Println(pos, dir)
+	draw(colors, pos, dir)
 
 	return len(colors)
 }
@@ -96,7 +135,7 @@ type fakeCPU struct {
 	Halted bool
 }
 
-func makeFakeCPU(outputs []int) fakeCPU {
+func makeFakeCPU(outputs []int) *fakeCPU {
 	fake := fakeCPU{
 		InChan: make(chan int),
 		OutChan: make(chan int),
@@ -109,15 +148,13 @@ func makeFakeCPU(outputs []int) fakeCPU {
 
 	go func() {
 		for _, x := range outputs {
-			println("x:", x)
 			fake.OutChan <- x
 		}
-		fmt.Println("halting")
 		fake.Halted = true
 		fake.DoneChan <- struct{}{}
 	}()
 
-	return fake
+	return &fake
 }
 
 func main() {
