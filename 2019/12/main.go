@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/pancelor/advent-of-code-solutions/2019/helpers"
 )
@@ -50,66 +51,81 @@ func (p point) sign() point {
 	return res
 }
 
-func printState(moons []point, vels []point) {
-	for i := 0; i < len(moons); i++ {
-		fmt.Printf("pos=%v vel=%v\n", moons[i], vels[i])
+func (state *simulationState) String() string {
+	var s strings.Builder
+	for i := 0; i < len(state.moons); i++ {
+		fmt.Fprintf(&s, "pos=%v vel=%v\n", state.moons[i], state.vels[i])
 	}
-	fmt.Printf("\n")
+	fmt.Fprintf(&s, "\n")
+	return s.String()
 }
 
-func applyGravity(moons []point, vels []point) {
-	for i := 0; i < len(moons); i++ {
-		for j := 0; j < len(moons); j++ {
+func (state *simulationState) applyGravity() {
+	for i := 0; i < len(state.moons); i++ {
+		for j := 0; j < len(state.moons); j++ {
 			if i == j {
 				continue
 			}
-			sign := moons[j].sub(moons[i]).sign()
-			vels[i] = vels[i].add(sign)
+			sign := state.moons[j].sub(state.moons[i]).sign()
+			state.vels[i] = state.vels[i].add(sign)
 		}
 	}
 }
 
-func applyVelocity(moons []point, vels []point) {
-	for i := 0; i < len(moons); i++ {
-		moons[i] = moons[i].add(vels[i])
+func (state *simulationState) applyVelocity() {
+	for i := 0; i < len(state.moons); i++ {
+		state.moons[i] = state.moons[i].add(state.vels[i])
 	}
 }
 
-func energy(moons []point, vels []point) int {
+func (state *simulationState) energy() int {
 	total := 0
-	for i := 0; i < len(moons); i++ {
+	for i := 0; i < len(state.moons); i++ {
 		pot := 0
-		pot += helpers.Abs(moons[i].x)
-		pot += helpers.Abs(moons[i].y)
-		pot += helpers.Abs(moons[i].z)
+		pot += helpers.Abs(state.moons[i].x)
+		pot += helpers.Abs(state.moons[i].y)
+		pot += helpers.Abs(state.moons[i].z)
 		kin := 0
-		kin += helpers.Abs(vels[i].x)
-		kin += helpers.Abs(vels[i].y)
-		kin += helpers.Abs(vels[i].z)
-		// fmt.Println(moons[i], pot, vels[i], kin)
+		kin += helpers.Abs(state.vels[i].x)
+		kin += helpers.Abs(state.vels[i].y)
+		kin += helpers.Abs(state.vels[i].z)
+		// fmt.Println(state.moons[i], pot, state.vels[i], kin)
 		total += pot * kin
 	}
 	return total
 }
 
-func solve(moons []point) interface{} {
-	vels := []point{
-		point{}, point{}, point{}, point{},
-	}
-	assert(len(moons) == len(vels), "mismatched len")
+// func hash(state) []byte {
+// 	first := sha256.New()
+// 	return first.Sum(nil)
+// }
 
-	for i := 0; i < 1000; i++ {
+type simulationState struct {
+	moons [4]point
+	vels  [4]point
+}
+
+func solve(state simulationState) interface{} {
+	seen := make(map[simulationState]bool)
+	for i := 0; i < 100000000; i++ {
+		if i%1000000 == 0 {
+			fmt.Printf("i=%d\n", i)
+		}
 		// if i == 0 {
-		// 	fmt.Printf("After %d steps:\n", i)
-		// 	printState(moons, vels)
+		// 	fmt.Printf("After %d steps:\n%s", i, state.String())
 		// }
-		applyGravity(moons, vels)
-		applyVelocity(moons, vels)
-		// fmt.Printf("After %d steps:\n", i+1)
-		// printState(moons, vels)
+
+		if seen[state] {
+			fmt.Printf("Repeated state at %d\n", i)
+			return i
+		}
+		seen[state] = true
+		state.applyGravity()
+		state.applyVelocity()
+		// fmt.Printf("After %d steps:\n%s", i, state.String())
 	}
 
-	return energy(moons, vels)
+	return nil
 }
 
 func init() {
@@ -126,8 +142,8 @@ func main() {
 	fmt.Printf("answer:\n%v\n", answer)
 }
 
-func getInput() ([]point, error) {
-	return []point{
+func getInput() (simulationState, error) {
+	moons := [4]point{
 		// ex 1
 		// point{x: -1, y: 0, z: 2},
 		// point{x: 2, y: -10, z: -7},
@@ -143,5 +159,7 @@ func getInput() ([]point, error) {
 		point{x: 4, y: 4, z: 19},
 		point{x: -11, y: 1, z: 8},
 		point{x: 2, y: 19, z: 15},
-	}, nil
+	}
+	s := simulationState{moons: moons}
+	return s, nil
 }
