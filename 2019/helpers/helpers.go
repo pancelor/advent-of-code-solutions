@@ -46,3 +46,11 @@ func EnsureInbounds(mem []int, ptr ...int) {
 		Assert(0 <= p && p < len(mem), "oob: %d", p)
 	}
 }
+
+// Abs returns the absolute value
+func Abs(x int) int {
+	if x < 0 {
+		return -x
+	}
+	return x
+}

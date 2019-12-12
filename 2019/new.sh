@@ -11,5 +11,5 @@ touch "$DAY"/input.txt
 URL_PREFIX='https://adventofcode.com/2019/day'
 # SUBLIME='/c/Program Files/Sublime Text 3/sublime_text.exe'
 # CHROME='/c/Program Files (x86)/Google/Chrome/Application/chrome.exe'
-"subl" -n "$DAY" "$DAY"/main.go "$DAY"/input.txt
+"code" -n "$DAY" "$DAY"/main.go "$DAY"/input.txt
 "chrome" "${URL_PREFIX}/${DAY}/input" "${URL_PREFIX}/${DAY}"
