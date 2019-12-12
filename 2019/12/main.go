@@ -9,8 +9,6 @@ import (
 var assert = helpers.Assert
 var check = helpers.Check
 
-const NumSteps = 1000
-
 type point struct {
 	x, y, z int
 }
@@ -80,12 +78,16 @@ func applyVelocity(moons []point, vels []point) {
 func energy(moons []point, vels []point) int {
 	total := 0
 	for i := 0; i < len(moons); i++ {
-		total += helpers.Abs(moons[i].x)
-		total += helpers.Abs(moons[i].y)
-		total += helpers.Abs(moons[i].z)
-		total += helpers.Abs(vels[i].x)
-		total += helpers.Abs(vels[i].y)
-		total += helpers.Abs(vels[i].z)
+		pot := 0
+		pot += helpers.Abs(moons[i].x)
+		pot += helpers.Abs(moons[i].y)
+		pot += helpers.Abs(moons[i].z)
+		kin := 0
+		kin += helpers.Abs(vels[i].x)
+		kin += helpers.Abs(vels[i].y)
+		kin += helpers.Abs(vels[i].z)
+		// fmt.Println(moons[i], pot, vels[i], kin)
+		total += pot * kin
 	}
 	return total
 }
@@ -96,11 +98,15 @@ func solve(moons []point) interface{} {
 	}
 	assert(len(moons) == len(vels), "mismatched len")
 
-	for i := 0; i <= NumSteps; i++ {
-		fmt.Printf("After %d steps:\n", i)
-		printState(moons, vels)
+	for i := 0; i < 1000; i++ {
+		// if i == 0 {
+		// 	fmt.Printf("After %d steps:\n", i)
+		// 	printState(moons, vels)
+		// }
 		applyGravity(moons, vels)
 		applyVelocity(moons, vels)
+		// fmt.Printf("After %d steps:\n", i+1)
+		// printState(moons, vels)
 	}
 
 	return energy(moons, vels)
@@ -122,6 +128,17 @@ func main() {
 
 func getInput() ([]point, error) {
 	return []point{
+		// ex 1
+		// point{x: -1, y: 0, z: 2},
+		// point{x: 2, y: -10, z: -7},
+		// point{x: 4, y: -8, z: 8},
+		// point{x: 3, y: 5, z: -1},
+		// ex 2
+		// point{x: -8, y: -10, z: 0},
+		// point{x: 5, y: 5, z: 10},
+		// point{x: 2, y: -7, z: 3},
+		// point{x: 9, y: -8, z: -3},
+		// real input
 		point{x: 0, y: 6, z: 1},
 		point{x: 4, y: 4, z: 19},
 		point{x: -11, y: 1, z: 8},
