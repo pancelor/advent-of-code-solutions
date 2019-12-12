@@ -106,6 +106,10 @@ type simulationState struct {
 }
 
 func solve(state simulationState) interface{} {
+	return solveSlow(state)
+}
+
+func solveSlow(state simulationState) interface{} {
 	seen := make(map[simulationState]bool)
 	for i := 0; i < 100000000; i++ {
 		if i%1000000 == 0 {
@@ -145,20 +149,20 @@ func main() {
 func getInput() (simulationState, error) {
 	moons := [4]point{
 		// ex 1
-		// point{x: -1, y: 0, z: 2},
-		// point{x: 2, y: -10, z: -7},
-		// point{x: 4, y: -8, z: 8},
-		// point{x: 3, y: 5, z: -1},
+		point{x: -1, y: 0, z: 2},
+		point{x: 2, y: -10, z: -7},
+		point{x: 4, y: -8, z: 8},
+		point{x: 3, y: 5, z: -1},
 		// ex 2
 		// point{x: -8, y: -10, z: 0},
 		// point{x: 5, y: 5, z: 10},
 		// point{x: 2, y: -7, z: 3},
 		// point{x: 9, y: -8, z: -3},
 		// real input
-		point{x: 0, y: 6, z: 1},
-		point{x: 4, y: 4, z: 19},
-		point{x: -11, y: 1, z: 8},
-		point{x: 2, y: 19, z: 15},
+		// point{x: 0, y: 6, z: 1},
+		// point{x: 4, y: 4, z: 19},
+		// point{x: -11, y: 1, z: 8},
+		// point{x: 2, y: 19, z: 15},
 	}
 	s := simulationState{moons: moons}
 	return s, nil
