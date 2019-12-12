@@ -3,3 +3,6 @@ in.txt
 /2018/10/data.js
 lodash.js
 .vscode
+*.hi
+*.o
+main
