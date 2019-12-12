@@ -2,7 +2,6 @@ package helpers
 
 import (
 	"bufio"
-	"errors"
 	"fmt"
 	"os"
 )
@@ -15,9 +14,9 @@ func Check(err error) {
 }
 
 // Assert panics with msg unless b is true
-func Assert(b bool, msg string) {
+func Assert(b bool, msg string, errorfArgs ...interface{}) {
 	if !b {
-		panic(errors.New(msg))
+		panic(fmt.Errorf(msg, errorfArgs...))
 	}
 }
 
@@ -31,9 +30,19 @@ func GetLines() ([]string, error) {
 	return lines, scanner.Err()
 }
 
+// ReadLine returns one line of stdin
+func ReadLine() string {
+	scanner := bufio.NewScanner(os.Stdin)
+	if scanner.Scan() {
+		return scanner.Text()
+	}
+	Assert(scanner.Err() == nil, "reading standard input: %s", scanner.Err())
+	return ""
+}
+
 // EnsureInbounds makes sure the pointers won't overflow the buffer
 func EnsureInbounds(mem []int, ptr ...int) {
 	for _, p := range ptr {
-		Assert(0 <= p && p < len(mem), fmt.Sprintf("oob: %d", p))
+		Assert(0 <= p && p < len(mem), "oob: %d", p)
 	}
 }
