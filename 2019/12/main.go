@@ -30,6 +30,14 @@ func (p point) sub(o point) point {
 	}
 }
 
+func (p point) multHadamard(o point) point {
+	return point{
+		x: p.x * o.x,
+		y: p.y * o.y,
+		z: p.z * o.z,
+	}
+}
+
 func (p point) sign() point {
 	res := point{}
 	if p.x < 0 {
@@ -105,23 +113,35 @@ type simulationState struct {
 	vels  [4]point
 }
 
-func solve(state simulationState) interface{} {
-	return solveSlow(state)
+func solve(realState simulationState) interface{} {
+	var stateX, stateY, stateZ simulationState
+	for i := 0; i < len(realState.moons); i++ {
+		stateX.moons[i] = realState.moons[i].multHadamard(point{1, 0, 0})
+		stateY.moons[i] = realState.moons[i].multHadamard(point{0, 1, 0})
+		stateZ.moons[i] = realState.moons[i].multHadamard(point{0, 0, 1})
+		stateX.vels[i] = realState.vels[i].multHadamard(point{1, 0, 0})
+		stateY.vels[i] = realState.vels[i].multHadamard(point{0, 1, 0})
+		stateZ.vels[i] = realState.vels[i].multHadamard(point{0, 0, 1})
+	}
+	x, ok := solveSlow(stateX, 1000000)
+	assert(ok, "x bound too low")
+	y, ok := solveSlow(stateY, 1000000)
+	assert(ok, "y bound too low")
+	z, ok := solveSlow(stateZ, 1000000)
+	assert(ok, "z bound too low")
+	fmt.Printf("x=%d, y=%d, z=%d\n", x, y, z)
+	return helpers.Lcm(x, y, z)
 }
 
-func solveSlow(state simulationState) interface{} {
+func solveSlow(state simulationState, limit int) (int, bool) {
 	seen := make(map[simulationState]bool)
-	for i := 0; i < 100000000; i++ {
-		if i%1000000 == 0 {
-			fmt.Printf("i=%d\n", i)
-		}
+	for i := 0; i < limit; i++ {
 		// if i == 0 {
 		// 	fmt.Printf("After %d steps:\n%s", i, state.String())
 		// }
 
 		if seen[state] {
-			fmt.Printf("Repeated state at %d\n", i)
-			return i
+			return i, true
 		}
 		seen[state] = true
 		state.applyGravity()
@@ -129,7 +149,7 @@ func solveSlow(state simulationState) interface{} {
 		// fmt.Printf("After %d steps:\n%s", i, state.String())
 	}
 
-	return nil
+	return 0, false
 }
 
 func init() {
@@ -149,20 +169,20 @@ func main() {
 func getInput() (simulationState, error) {
 	moons := [4]point{
 		// ex 1
-		point{x: -1, y: 0, z: 2},
-		point{x: 2, y: -10, z: -7},
-		point{x: 4, y: -8, z: 8},
-		point{x: 3, y: 5, z: -1},
+		// point{x: -1, y: 0, z: 2},
+		// point{x: 2, y: -10, z: -7},
+		// point{x: 4, y: -8, z: 8},
+		// point{x: 3, y: 5, z: -1},
 		// ex 2
 		// point{x: -8, y: -10, z: 0},
 		// point{x: 5, y: 5, z: 10},
 		// point{x: 2, y: -7, z: 3},
 		// point{x: 9, y: -8, z: -3},
 		// real input
-		// point{x: 0, y: 6, z: 1},
-		// point{x: 4, y: 4, z: 19},
-		// point{x: -11, y: 1, z: 8},
-		// point{x: 2, y: 19, z: 15},
+		point{x: 0, y: 6, z: 1},
+		point{x: 4, y: 4, z: 19},
+		point{x: -11, y: 1, z: 8},
+		point{x: 2, y: 19, z: 15},
 	}
 	s := simulationState{moons: moons}
 	return s, nil
