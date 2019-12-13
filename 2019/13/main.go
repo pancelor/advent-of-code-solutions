@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/pancelor/advent-of-code-solutions/2019/computer"
 	"github.com/pancelor/advent-of-code-solutions/2019/helpers"
@@ -80,60 +81,63 @@ func (s *Screen) Count(t TileType) int {
 	return total
 }
 
-func runInput(ch chan int) {
-	for {
-		val := 0
-		if ballX < paddleX {
-			val = -1
-		} else if ballX > paddleX {
-			val = 1
-		}
-		select {
-		case ch <- val:
-			fmt.Println("ballX, paddleX, val", ballX, paddleX, val)
-		default:
-		}
-	}
-}
-
-var ballX = 0
-var paddleX = 0
-
-func solve(in Input) {
+func solve(in Input) interface{} {
 	cpu := computer.MakeCPU("grenadier")
 	in[0] = 2
-
 	cpu.SetMemory(in)
-	fmt.Println(cpu.PrintProgram())
 
-	// cpu.Run()
-	// score := 0
-	// go runInput(cpu.InChan)
+	// fmt.Println(cpu.PrintProgram())
+	// return nil
 
-	// var screen Screen
-	// for !cpu.Halted {
-	// 	x := <-cpu.OutChan
-	// 	y := <-cpu.OutChan
-	// 	z := <-cpu.OutChan
-	// 	if x == -1 && y == 0 {
-	// 		score = z
-	// 	} else {
-	// 		t := TileType(z)
-	// 		// fmt.Printf("x,y,t=%d,%d,%s\n", x, y, t.String())
-	// 		screen.set(x, y, t)
-	// 		if t == TT_BALL {
-	// 			fmt.Printf("ballX=%#v\n", ballX)
-	// 			ballX = x
-	// 		}
-	// 		if t == TT_HORIZONTAL {
-	// 			fmt.Printf("paddleX=%#v\n", paddleX)
-	// 			paddleX = x
-	// 		}
-	// 	}
-	// 	fmt.Printf("%s\n", screen.String())
-	// }
+	cpu.Run()
+	score := 0
 
-	// return score
+	var screen Screen
+	doPrint := false
+	ballX := 0
+	paddleX := 0
+	for {
+		switch state := <-cpu.StateChan; state {
+		case computer.CS_WAITING_INPUT:
+			doPrint = true
+			time.Sleep(10 * time.Millisecond)
+			val := 0
+			if ballX < paddleX {
+				val = -1
+			} else if ballX > paddleX {
+				val = 1
+			}
+			cpu.InChan <- val
+		case computer.CS_WAITING_OUTPUT:
+			x := <-cpu.OutChan
+			assert(<-cpu.StateChan == computer.CS_WAITING_OUTPUT, "unexpected end of output")
+			y := <-cpu.OutChan
+			assert(<-cpu.StateChan == computer.CS_WAITING_OUTPUT, "unexpected end of output")
+			z := <-cpu.OutChan
+			if x == -1 && y == 0 {
+				score = z
+			} else {
+				t := TileType(z)
+				// fmt.Printf("x,y,t=%d,%d,%s\n", x, y, t.String())
+				screen.set(x, y, t)
+				if t == TT_BALL {
+					ballX = x
+				}
+				if t == TT_HORIZONTAL {
+					paddleX = x
+				}
+			}
+			if doPrint {
+				fmt.Printf("score: %d\n%s\n", score, screen.String())
+			}
+		case computer.CS_DONE:
+			return score
+		default:
+			assert(false, "unexpected state %s", state)
+		}
+	}
+
+	return 0
 }
 
 func init() {
@@ -146,7 +150,8 @@ func init() {
 func main() {
 	input, err := getInput()
 	check(err)
-	solve(input)
+	answer := solve(input)
+	fmt.Printf("answer:\n%v\n", answer)
 }
 
 func getInput() (Input, error) {

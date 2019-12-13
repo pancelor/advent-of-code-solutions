@@ -162,13 +162,37 @@ func MakeParameter(cpu *CPU, mode int, val int) Parameter {
 	return nil
 }
 
+// State .
+type State int
+
+const (
+	CS_NONE State = iota
+	CS_WAITING_INPUT
+	CS_WAITING_OUTPUT
+	CS_DONE
+)
+
+func (s State) String() string {
+	switch s {
+	case CS_NONE:
+		return "CS_NONE"
+	case CS_WAITING_INPUT:
+		return "CS_WAITING_INPUT"
+	case CS_WAITING_OUTPUT:
+		return "CS_WAITING_OUTPUT"
+	case CS_DONE:
+		return "CS_DONE"
+	}
+	return "CS_?"
+}
+
 // CPU .
 type CPU struct {
-	Name     string
-	InChan   chan int
-	OutChan  chan int
-	DoneChan chan struct{}
-	Halted   bool
+	Name      string
+	InChan    chan int
+	OutChan   chan int
+	StateChan chan State
+	Halted    bool
 
 	pc      int
 	modes   paramModes
@@ -179,10 +203,10 @@ type CPU struct {
 // MakeCPU makes a CPU
 func MakeCPU(name string) CPU {
 	return CPU{
-		Name:     name,
-		InChan:   make(chan int, 1),
-		OutChan:  make(chan int, 1),
-		DoneChan: make(chan struct{}, 1),
+		Name:      name,
+		InChan:    make(chan int, 1),
+		OutChan:   make(chan int, 1),
+		StateChan: make(chan State, 1),
 	}
 }
 
@@ -223,11 +247,13 @@ func (cpu *CPU) Run() {
 				c.Set(a.Get() * b.Get())
 			case 3: // input
 				a := cpu.NextParameter()
+				cpu.StateChan <- CS_WAITING_INPUT
 				i := <-cpu.InChan
 				// fmt.Printf("%s < %d\n", name, i)
 				a.Set(i)
 			case 4: // output
 				a := cpu.NextParameter()
+				cpu.StateChan <- CS_WAITING_OUTPUT
 				cpu.OutChan <- a.Get()
 			case 5: // jump-if-true
 				a := cpu.NextParameter()
@@ -264,9 +290,9 @@ func (cpu *CPU) Run() {
 				cpu.relBase += a.Get()
 			case 99: // halt
 				cpu.Halted = true
-				cpu.DoneChan <- struct{}{}
-				close(cpu.DoneChan)
-				// close(cpu.InChan) // can cause race conditions in typical use
+				cpu.StateChan <- CS_DONE
+				close(cpu.StateChan)
+				close(cpu.InChan)
 				close(cpu.OutChan)
 			default:
 				panic("unknown opcode")
