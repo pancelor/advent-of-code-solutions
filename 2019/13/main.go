@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/pancelor/advent-of-code-solutions/2019/computer"
 	"github.com/pancelor/advent-of-code-solutions/2019/helpers"
@@ -99,8 +98,8 @@ func solve(in Input) interface{} {
 	for {
 		switch state := <-cpu.StateChan; state {
 		case computer.CS_WAITING_INPUT:
-			doPrint = true
-			time.Sleep(10 * time.Millisecond)
+			// doPrint = true
+			// time.Sleep(1 * time.Millisecond)
 			val := 0
 			if ballX < paddleX {
 				val = -1
@@ -128,7 +127,8 @@ func solve(in Input) interface{} {
 				}
 			}
 			if doPrint {
-				fmt.Printf("score: %d\n%s\n", score, screen.String())
+				fmt.Printf("score: %d\n", score)
+				fmt.Printf("%s\n", screen.String())
 			}
 		case computer.CS_DONE:
 			return score
@@ -136,8 +136,6 @@ func solve(in Input) interface{} {
 			assert(false, "unexpected state %s", state)
 		}
 	}
-
-	return 0
 }
 
 func init() {
