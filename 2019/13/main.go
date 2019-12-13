@@ -99,13 +99,12 @@ func runInput(ch chan int) {
 var ballX = 0
 var paddleX = 0
 
-func solve(in Input) interface{} {
+func solve(in Input) {
 	cpu := computer.MakeCPU("grenadier")
 	in[0] = 2
 
 	cpu.SetMemory(in)
 	fmt.Println(cpu.PrintProgram())
-	return nil
 
 	// cpu.Run()
 	// score := 0
@@ -147,8 +146,7 @@ func init() {
 func main() {
 	input, err := getInput()
 	check(err)
-	answer := solve(input)
-	fmt.Printf("answer:\n%v\n", answer)
+	solve(input)
 }
 
 func getInput() (Input, error) {

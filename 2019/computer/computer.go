@@ -353,18 +353,24 @@ func makeJumpLocations() JumpLocations {
 }
 
 func (j JumpLocations) enqueue(loc int) {
-	if j[loc] == JLT_NONE {
+	switch j[loc] {
+	case JLT_NONE:
 		j[loc] = JLT_QUEUED
+	case JLT_QUEUED:
+	case JLT_DONE_BORING:
+		j[loc] = JLT_DONE
+	case JLT_DONE:
 	}
 }
 
-func (j JumpLocations) addDone(loc int) {
-	j[loc] = JLT_DONE
-}
-
 func (j JumpLocations) addDoneBoring(loc int) {
-	if j[loc] == JLT_NONE {
+	switch j[loc] {
+	case JLT_NONE:
 		j[loc] = JLT_DONE_BORING
+	case JLT_QUEUED:
+		j[loc] = JLT_DONE
+	case JLT_DONE_BORING:
+	case JLT_DONE:
 	}
 }
 
