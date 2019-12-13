@@ -3,6 +3,7 @@ package computer
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/pancelor/advent-of-code-solutions/2019/helpers"
 )
@@ -93,6 +94,11 @@ func (p ParamPointer) Set(x int) {
 	p.cpu.mem[p.addr] = x
 }
 
+// String .
+func (p ParamPointer) String() string {
+	return fmt.Sprintf("[%d]", p.addr)
+}
+
 // ParamLiteral is a literal value
 type ParamLiteral struct {
 	val int
@@ -106,6 +112,11 @@ func (p ParamLiteral) Get() int {
 // Set .
 func (p ParamLiteral) Set(x int) {
 	panic("trying to Set a ParamLiteral")
+}
+
+// String .
+func (p ParamLiteral) String() string {
+	return fmt.Sprintf("%d", p.val)
 }
 
 // ParamRelativePointer is a pointer to a relative location in memory
@@ -124,6 +135,11 @@ func (p ParamRelativePointer) Get() int {
 func (p ParamRelativePointer) Set(x int) {
 	helpers.EnsureInbounds(p.cpu.mem, p.cpu.relBase+p.addr)
 	p.cpu.mem[p.cpu.relBase+p.addr] = x
+}
+
+// String .
+func (p ParamRelativePointer) String() string {
+	return fmt.Sprintf("[RB+%d]", p.addr)
 }
 
 // NextParameter changes cpu state to return the next parameter at the pc
@@ -152,7 +168,7 @@ type CPU struct {
 	InChan   chan int
 	OutChan  chan int
 	DoneChan chan struct{}
-	Halted  bool
+	Halted   bool
 
 	pc      int
 	modes   paramModes
@@ -286,27 +302,27 @@ func (cpu *CPU) dump() {
 	fmt.Printf("\n]\n")
 }
 
-
 // MockCPU is useful for testing
 type MockCPU struct {
-	InChan chan int
-	OutChan chan int
+	InChan   chan int
+	OutChan  chan int
 	DoneChan chan struct{}
-	Halted bool
+	Halted   bool
 }
 
 // MakeMockCPU makes a mock CPU that will ignore inputs
 // and output the given outputs
 func MakeMockCPU(outputs []int) *MockCPU {
 	mock := MockCPU{
-		InChan: make(chan int, 1),
-		OutChan: make(chan int, 1),
+		InChan:   make(chan int, 1),
+		OutChan:  make(chan int, 1),
 		DoneChan: make(chan struct{}, 1),
 	}
 
 	// ignore input
 	go func() {
-		for _ = range mock.InChan {}
+		for _ = range mock.InChan {
+		}
 	}()
 
 	// produce output
@@ -319,4 +335,148 @@ func MakeMockCPU(outputs []int) *MockCPU {
 	}()
 
 	return &mock
+}
+
+type JumpLocationType int
+
+const (
+	JLT_NONE JumpLocationType = iota
+	JLT_QUEUED
+	JLT_DONE_BORING
+	JLT_DONE
+)
+
+type JumpLocations map[int]JumpLocationType
+
+func makeJumpLocations() JumpLocations {
+	return make(map[int]JumpLocationType)
+}
+
+func (j JumpLocations) enqueue(loc int) {
+	if j[loc] == JLT_NONE {
+		j[loc] = JLT_QUEUED
+	}
+}
+
+func (j JumpLocations) addDone(loc int) {
+	j[loc] = JLT_DONE
+}
+
+func (j JumpLocations) addDoneBoring(loc int) {
+	if j[loc] == JLT_NONE {
+		j[loc] = JLT_DONE_BORING
+	}
+}
+
+func (j JumpLocations) pop() (int, bool) {
+	for k, v := range j {
+		if v == JLT_QUEUED {
+			j[k] = JLT_DONE
+			return k, true
+		}
+	}
+	return 0, false
+}
+
+func (j JumpLocations) query(loc int) JumpLocationType {
+	return j[loc]
+}
+
+func (cpu *CPU) PrintProgram() string {
+	jumpLocs := makeJumpLocations()
+	jumpLocs.enqueue(0)
+
+	type Line struct {
+		n    int
+		line string
+	}
+	var lines []Line
+	for {
+		if loc, ok := jumpLocs.pop(); !ok {
+			break
+		} else {
+			cpu.pc = loc
+		}
+
+	RUNNER:
+		for cpu.pc < len(cpu.mem) {
+			jumpLocs.addDoneBoring(cpu.pc)
+			var s strings.Builder
+			pc := cpu.pc
+
+			code := cpu.NextOpcode()
+			switch code {
+			case 1: // add
+				a := cpu.NextParameter()
+				b := cpu.NextParameter()
+				c := cpu.NextParameter()
+				fmt.Fprintf(&s, "%s = %s+%s\n", c, a, b)
+			case 2: // mult
+				a := cpu.NextParameter()
+				b := cpu.NextParameter()
+				c := cpu.NextParameter()
+				fmt.Fprintf(&s, "%s = %s*%s\n", c, a, b)
+			case 3: // input
+				a := cpu.NextParameter()
+				fmt.Fprintf(&s, "%s = input()\n", a)
+			case 4: // output
+				a := cpu.NextParameter()
+				fmt.Fprintf(&s, "output(%s)\n", a)
+			case 5: // jump-if-true
+				a := cpu.NextParameter()
+				b := cpu.NextParameter()
+				fmt.Fprintf(&s, "if %s { goto %s }", a, b)
+				if lit, ok := b.(ParamLiteral); ok {
+					jumpLocs.enqueue(lit.val)
+				} else {
+					fmt.Fprintf(&s, " // UNFOLLOWABLE")
+				}
+				fmt.Fprintf(&s, "\n")
+			case 6: // jump-if-false
+				a := cpu.NextParameter()
+				b := cpu.NextParameter()
+				fmt.Fprintf(&s, "if !%s { goto %s }", a, b)
+				if lit, ok := b.(ParamLiteral); ok {
+					jumpLocs.enqueue(lit.val)
+				} else {
+					fmt.Fprintf(&s, " // UNFOLLOWABLE")
+				}
+				fmt.Fprintf(&s, "\n")
+			case 7: // less than
+				a := cpu.NextParameter()
+				b := cpu.NextParameter()
+				c := cpu.NextParameter()
+				fmt.Fprintf(&s, "%s = (%s < %s)\n", c, a, b)
+			case 8: // equals
+				a := cpu.NextParameter()
+				b := cpu.NextParameter()
+				c := cpu.NextParameter()
+				fmt.Fprintf(&s, "%s = (%s == %s)\n", c, a, b)
+			case 9: // adjust relative parameter base
+				a := cpu.NextParameter()
+				fmt.Fprintf(&s, "RB += %s\n", a)
+			case 99: // halt
+				fmt.Fprintf(&s, "exit\n")
+			default:
+				break RUNNER
+			}
+			lines = append(lines, Line{n: pc, line: s.String()})
+		}
+	}
+
+	var s strings.Builder
+	for _, l := range lines {
+		n := l.n
+		line := l.line
+
+		doneType := jumpLocs.query(n)
+		if doneType == JLT_DONE {
+			fmt.Fprintf(&s, "\n%3d*: ", n)
+		} else {
+			assert(doneType == JLT_DONE_BORING, "should be JLT_DONE_BORING (%d)", doneType)
+			fmt.Fprintf(&s, "%3d : ", n)
+		}
+		fmt.Fprintf(&s, line)
+	}
+	return s.String()
 }

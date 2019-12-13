@@ -102,35 +102,39 @@ var paddleX = 0
 func solve(in Input) interface{} {
 	cpu := computer.MakeCPU("grenadier")
 	in[0] = 2
+
 	cpu.SetMemory(in)
-	cpu.Run()
-	score := 0
-	go runInput(cpu.InChan)
+	fmt.Println(cpu.PrintProgram())
+	return nil
 
-	var screen Screen
-	for !cpu.Halted {
-		x := <-cpu.OutChan
-		y := <-cpu.OutChan
-		z := <-cpu.OutChan
-		if x == -1 && y == 0 {
-			score = z
-		} else {
-			t := TileType(z)
-			// fmt.Printf("x,y,t=%d,%d,%s\n", x, y, t.String())
-			screen.set(x, y, t)
-			if t == TT_BALL {
-				fmt.Printf("ballX=%#v\n", ballX)
-				ballX = x
-			}
-			if t == TT_HORIZONTAL {
-				fmt.Printf("paddleX=%#v\n", paddleX)
-				paddleX = x
-			}
-		}
-		fmt.Printf("%s\n", screen.String())
-	}
+	// cpu.Run()
+	// score := 0
+	// go runInput(cpu.InChan)
 
-	return score
+	// var screen Screen
+	// for !cpu.Halted {
+	// 	x := <-cpu.OutChan
+	// 	y := <-cpu.OutChan
+	// 	z := <-cpu.OutChan
+	// 	if x == -1 && y == 0 {
+	// 		score = z
+	// 	} else {
+	// 		t := TileType(z)
+	// 		// fmt.Printf("x,y,t=%d,%d,%s\n", x, y, t.String())
+	// 		screen.set(x, y, t)
+	// 		if t == TT_BALL {
+	// 			fmt.Printf("ballX=%#v\n", ballX)
+	// 			ballX = x
+	// 		}
+	// 		if t == TT_HORIZONTAL {
+	// 			fmt.Printf("paddleX=%#v\n", paddleX)
+	// 			paddleX = x
+	// 		}
+	// 	}
+	// 	fmt.Printf("%s\n", screen.String())
+	// }
+
+	// return score
 }
 
 func init() {
