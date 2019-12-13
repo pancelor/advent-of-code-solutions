@@ -41,7 +41,7 @@ func (t *TileType) String() string {
 	return "?"
 }
 
-type Screen [40][40]TileType
+type Screen [20][38]TileType
 
 func (s *Screen) sizeCheck(x, y int) {
 	assert(helpers.Inbounds(x, 0, 400) && helpers.Inbounds(y, 0, 400), "bad screen coords (%d, %d)", x, y)
@@ -80,23 +80,57 @@ func (s *Screen) Count(t TileType) int {
 	return total
 }
 
+func runInput(ch chan int) {
+	for {
+		val := 0
+		if ballX < paddleX {
+			val = -1
+		} else if ballX > paddleX {
+			val = 1
+		}
+		select {
+		case ch <- val:
+			fmt.Println("ballX, paddleX, val", ballX, paddleX, val)
+		default:
+		}
+	}
+}
+
+var ballX = 0
+var paddleX = 0
+
 func solve(in Input) interface{} {
 	cpu := computer.MakeCPU("grenadier")
+	in[0] = 2
 	cpu.SetMemory(in)
 	cpu.Run()
+	score := 0
+	go runInput(cpu.InChan)
 
 	var screen Screen
 	for !cpu.Halted {
 		x := <-cpu.OutChan
 		y := <-cpu.OutChan
-		t := TileType(<-cpu.OutChan)
-		// fmt.Printf("x,y,t=%d,%d,%s\n", x, y, t.String())
-		screen.set(x, y, t)
+		z := <-cpu.OutChan
+		if x == -1 && y == 0 {
+			score = z
+		} else {
+			t := TileType(z)
+			// fmt.Printf("x,y,t=%d,%d,%s\n", x, y, t.String())
+			screen.set(x, y, t)
+			if t == TT_BALL {
+				fmt.Printf("ballX=%#v\n", ballX)
+				ballX = x
+			}
+			if t == TT_HORIZONTAL {
+				fmt.Printf("paddleX=%#v\n", paddleX)
+				paddleX = x
+			}
+		}
+		fmt.Printf("%s\n", screen.String())
 	}
 
-	fmt.Printf("%s\n", screen.String())
-
-	return screen.Count(TT_BLOCK)
+	return score
 }
 
 func init() {
