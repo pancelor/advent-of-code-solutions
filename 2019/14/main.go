@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"math"
+	"sort"
 	"strings"
 
 	"github.com/pancelor/advent-of-code-solutions/2019/helpers"
@@ -65,14 +66,18 @@ func solve(in Input) interface{} {
 
 	// fmt.Printf("val=%#v\n", book)
 
-	ore, _ := oreForFuel(1, book)
+	// ore := oreForFuel(1, book)
 
-	// fmt.Println(bal)
-
-	return ore
+	upperBound := Trillion // good enough
+	amtFuel := sort.Search(upperBound, func(i int) bool {
+		return oreForFuel(i+1, book) > Trillion
+	})
+	return amtFuel
 }
 
-func oreForFuel(amtFuel int, book map[Chemical]InvertedReaction) (int, Balance) {
+const Trillion = 1000000000000
+
+func oreForFuel(amtFuel int, book map[Chemical]InvertedReaction) int {
 	bal := makeBalance()
 	bal.need(ChemicalAmount{chemical: Chemical("FUEL"), n: 1}, amtFuel)
 	for {
@@ -90,7 +95,9 @@ func oreForFuel(amtFuel int, book map[Chemical]InvertedReaction) (int, Balance) 
 		}
 	}
 
-	return -bal[Chemical("ORE")], bal
+	// fmt.Println(bal)
+
+	return -bal[Chemical("ORE")]
 }
 
 func init() {
