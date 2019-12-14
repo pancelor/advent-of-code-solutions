@@ -222,6 +222,22 @@ func (cpu *CPU) NextOpcode() int {
 
 // TODO opcode type
 
+// SendInput sends the input iff the computer's StateChan indicates
+// it's ready for it. otherwise, it panics
+func (cpu *CPU) SendInput(x int) {
+	state := <-cpu.StateChan
+	assert(state == CS_WAITING_INPUT, "tried to SendInput but state was %v", state)
+	cpu.InChan <- x
+}
+
+// RecvOutput receives the output iff the computer's StateChan indicates
+// it's ready for it. otherwise, it panics
+func (cpu *CPU) RecvOutput() int {
+	state := <-cpu.StateChan
+	assert(state == CS_WAITING_OUTPUT, "tried to RecvOutput but state was %v", state)
+	return <-cpu.OutChan
+}
+
 // Run runs the cpu in a goroutine
 func (cpu *CPU) Run() {
 	go func() {

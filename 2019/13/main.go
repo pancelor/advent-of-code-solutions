@@ -109,10 +109,8 @@ func solve(in Input) interface{} {
 			cpu.InChan <- val
 		case computer.CS_WAITING_OUTPUT:
 			x := <-cpu.OutChan
-			assert(<-cpu.StateChan == computer.CS_WAITING_OUTPUT, "unexpected end of output")
-			y := <-cpu.OutChan
-			assert(<-cpu.StateChan == computer.CS_WAITING_OUTPUT, "unexpected end of output")
-			z := <-cpu.OutChan
+			y := cpu.RecvOutput()
+			z := cpu.RecvOutput()
 			if x == -1 && y == 0 {
 				score = z
 			} else {

@@ -67,6 +67,7 @@ func solve(in Input) interface{} {
 	// fmt.Printf("val=%#v\n", book)
 
 	// ore := oreForFuel(1, book)
+	// return ore
 
 	upperBound := Trillion // good enough
 	amtFuel := sort.Search(upperBound, func(i int) bool {
@@ -82,13 +83,14 @@ func oreForFuel(amtFuel int, book map[Chemical]InvertedReaction) int {
 	bal.need(ChemicalAmount{chemical: Chemical("FUEL"), n: 1}, amtFuel)
 	for {
 		next, done := bal.nextRequirement()
-		// fmt.Printf("Making %#v (%v)\n", next, done)
+		// fmt.Printf("bal=%v\n", bal)
 		if done {
 			break
 		}
 		ir := book[next.chemical]
 		assert(ir.n != 0, "don't know how to make %s", next.chemical)
 		times := int(math.Ceil(math.Abs(float64(next.n) / float64(ir.n))))
+		// fmt.Printf("Making %s x%d\n", next.chemical, times)
 		bal.make(ChemicalAmount{chemical: next.chemical, n: ir.n}, times)
 		for _, ca := range ir.lhs {
 			bal.need(ca, times)
