@@ -65,27 +65,32 @@ func solve(in Input) interface{} {
 
 	// fmt.Printf("val=%#v\n", book)
 
+	ore, _ := oreForFuel(1, book)
+
+	// fmt.Println(bal)
+
+	return ore
+}
+
+func oreForFuel(amtFuel int, book map[Chemical]InvertedReaction) (int, Balance) {
 	bal := makeBalance()
-	bal.need(ChemicalAmount{chemical: Chemical("FUEL"), n: 1}, 1)
+	bal.need(ChemicalAmount{chemical: Chemical("FUEL"), n: 1}, amtFuel)
 	for {
 		next, done := bal.nextRequirement()
-		fmt.Printf("Making %#v (%v)\n", next, done)
+		// fmt.Printf("Making %#v (%v)\n", next, done)
 		if done {
 			break
 		}
 		ir := book[next.chemical]
 		assert(ir.n != 0, "don't know how to make %s", next.chemical)
-		fmt.Printf("ir=%#v\n", ir)
 		times := int(math.Ceil(math.Abs(float64(next.n) / float64(ir.n))))
-		fmt.Println(times, next.n, ir.n)
 		bal.make(ChemicalAmount{chemical: next.chemical, n: ir.n}, times)
 		for _, ca := range ir.lhs {
 			bal.need(ca, times)
 		}
 	}
 
-	fmt.Println(bal)
-	return bal[Chemical("ORE")]
+	return -bal[Chemical("ORE")], bal
 }
 
 func init() {
