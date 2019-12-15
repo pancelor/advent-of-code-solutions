@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/pancelor/advent-of-code-solutions/2019/computer"
 	"github.com/pancelor/advent-of-code-solutions/2019/helpers"
@@ -248,6 +249,7 @@ func promptDir() int {
 	case "s":
 		return 3
 	default:
+		fmt.Printf("(wasd only)\n")
 		return promptDir()
 	}
 	return 0
@@ -271,21 +273,34 @@ func solve(in []int) interface{} {
 
 	r := makeRobot(&cpu)
 	r.look()
+	var hist []int // history of directions moved
 	for {
 		exciting := r.excitingNeighbors()
+		undo := false
 		var dir int
-		if len(exciting) == 1 {
-			dir = exciting[0]
+		if len(exciting) == 0 {
+			if !r.pos.nz() {
+				// we've backtracked all the way back to the start
+				return nil
+			}
+			var last int
+			last, hist = hist[len(hist)-1], hist[:len(hist)-1] // pop
+			dir = oppDir(last)
+			undo = true
 		} else {
-			dir = promptDir()
+			dir = exciting[0]
 		}
 
-		r.move(dir, true)
+		success := r.move(dir, true)
+		if success && !undo {
+			hist = append(hist, dir)
+		}
 		r.look()
-		fmt.Printf("pos=%v, dir=%v\n%s\n", r.pos, r.dir, r.Draw())
+		fmt.Printf("pos=%v, dir=%v, goalPos=%v, len(hist)=%v\n%s\n", r.pos, r.dir, r.goalPos, len(hist), r.Draw())
+		time.Sleep(5 * time.Millisecond)
 
 		if r.goalPos.nz() {
-			return r.goalPos
+			return len(hist) + 1 // we found the goal by look()ing at it so we need to move once more to get it
 		}
 	}
 }
