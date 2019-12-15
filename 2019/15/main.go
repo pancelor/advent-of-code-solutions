@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/pancelor/advent-of-code-solutions/2019/computer"
 	"github.com/pancelor/advent-of-code-solutions/2019/helpers"
@@ -19,7 +18,6 @@ const (
 	TT_UNEXPLORED
 	TT_EXPLORED
 	TT_WALL
-	TT_GOAL
 )
 
 func (t *TileType) String() string {
@@ -32,8 +30,6 @@ func (t *TileType) String() string {
 		return "."
 	case TT_WALL:
 		return "#"
-	case TT_GOAL:
-		return "$"
 	}
 	return "?"
 }
@@ -159,7 +155,9 @@ func (r *robot) Draw() string {
 	for y := y1; y <= y2; y++ {
 		for x := x1; x <= x2; x++ {
 			p := point{x, y}
-			if p == r.pos {
+			if p == r.goalPos {
+				fmt.Fprint(&b, "$")
+			} else if p == r.pos {
 				fmt.Fprint(&b, dirString(r.dir))
 			} else {
 				t := r.grid[p]
@@ -194,7 +192,6 @@ func (r *robot) move(dir int, real bool) bool {
 		case 1:
 			// fmt.Println("Success")
 			if real {
-				println(1)
 				r.record(TT_EXPLORED)
 			} else {
 				r.record(TT_UNEXPLORED)
@@ -202,11 +199,15 @@ func (r *robot) move(dir int, real bool) bool {
 			return true
 		case 2:
 			// fmt.Println("Success; found goal!")
-			r.record(TT_GOAL)
+			if real {
+				r.record(TT_EXPLORED)
+			} else {
+				r.record(TT_UNEXPLORED)
+			}
 			r.goalPos = r.pos
 
 			assert(r.goalPos.nz(), "goal is at 0,0")
-			fmt.Printf("found goal! %v\n", r.goalPos)
+			// fmt.Printf("found goal! %v\n", r.goalPos)
 
 			return true
 		default:
@@ -216,11 +217,11 @@ func (r *robot) move(dir int, real bool) bool {
 	return false
 }
 
-func (r *robot) excitingNeighbors() []int {
+func (r *robot) unexploredNeighbors() []int {
 	var res []int
 	for d := 0; d < 4; d++ {
 		t := r.grid[r.pos.addDir(d, 1)]
-		if t == TT_UNEXPLORED || t == TT_UNKNOWN {
+		if t == TT_UNEXPLORED {
 			res = append(res, d)
 		}
 	}
@@ -265,6 +266,41 @@ func (r *robot) look() {
 	r.dir = temp
 }
 
+// uses backtracking to explore the entire area
+// returns the minimum distance to the end
+// assumes the maze is a DAG; does not check to make sure this is true
+func (r *robot) explore() int {
+	var hist []int // history of directions moved
+	for {
+		r.look()
+		unexplored := r.unexploredNeighbors()
+		undo := false
+		var dir int
+		if len(unexplored) == 0 {
+			// if !r.pos.nz() {
+			// 	// we've backtracked all the way back to the start
+			// 	break
+			// }
+			var last int
+			last, hist = hist[len(hist)-1], hist[:len(hist)-1] // pop
+			dir = oppDir(last)
+			undo = true
+		} else {
+			dir = unexplored[0]
+		}
+
+		success := r.move(dir, true)
+		if success && !undo {
+			hist = append(hist, dir)
+		}
+		// fmt.Printf("pos=%v, dir=%v, goalPos=%v, len(hist)=%v\n%s\n", r.pos, r.dir, r.goalPos, len(hist), r.Draw())
+		// time.Sleep(5 * time.Millisecond)
+		if r.pos == r.goalPos {
+			return len(hist)
+		}
+	}
+}
+
 func solve(in []int) interface{} {
 	cpu := computer.MakeCPU("robbie")
 	cpu.SetMemory(in)
@@ -272,37 +308,11 @@ func solve(in []int) interface{} {
 	cpu.Run()
 
 	r := makeRobot(&cpu)
-	r.look()
-	var hist []int // history of directions moved
-	for {
-		exciting := r.excitingNeighbors()
-		undo := false
-		var dir int
-		if len(exciting) == 0 {
-			if !r.pos.nz() {
-				// we've backtracked all the way back to the start
-				return nil
-			}
-			var last int
-			last, hist = hist[len(hist)-1], hist[:len(hist)-1] // pop
-			dir = oppDir(last)
-			undo = true
-		} else {
-			dir = exciting[0]
-		}
+	dist := r.explore()
+	return dist
+	fmt.Printf("goalPos=%v \n%s\n", r.goalPos, r.Draw())
 
-		success := r.move(dir, true)
-		if success && !undo {
-			hist = append(hist, dir)
-		}
-		r.look()
-		fmt.Printf("pos=%v, dir=%v, goalPos=%v, len(hist)=%v\n%s\n", r.pos, r.dir, r.goalPos, len(hist), r.Draw())
-		time.Sleep(5 * time.Millisecond)
-
-		if r.goalPos.nz() {
-			return len(hist) + 1 // we found the goal by look()ing at it so we need to move once more to get it
-		}
-	}
+	return nil
 }
 
 func init() {
