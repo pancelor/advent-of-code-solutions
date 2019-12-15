@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/pancelor/advent-of-code-solutions/2019/computer"
@@ -38,6 +37,10 @@ func (t *TileType) String() string {
 type point struct {
 	x int
 	y int
+}
+
+func oppDir(dir int) int {
+	return (dir + 2) % 4
 }
 
 func (p point) addDir(dir int, n int) point {
@@ -111,16 +114,48 @@ func (g Grid) String() string {
 	return b.String()
 }
 
-func (g Grid) Draw(p point, dir int) string {
+func (p *point) nz() bool {
+	return *p != (point{})
+}
+
+func translate(dir int) int {
+	switch dir {
+	case 0:
+		return 4
+	case 1:
+		return 1
+	case 2:
+		return 3
+	case 3:
+		return 2
+	}
+	return 0
+}
+
+type robot struct {
+	cpu     *computer.CPU
+	pos     point
+	dir     int
+	grid    Grid
+	goalPos point
+}
+
+// record tile type seen at current pos
+func (r *robot) record(t TileType) {
+	fmt.Printf("Recording %s at %v\n", t.String(), r.pos)
+	r.grid[r.pos] = t
+}
+
+func (r *robot) Draw() string {
 	var b strings.Builder
-	x1, x2, y1, y2 := g.bounds()
+	x1, x2, y1, y2 := r.grid.bounds()
 	for y := y1; y <= y2; y++ {
 		for x := x1; x <= x2; x++ {
-			pos := point{x, y}
-			if pos == p {
-				return dirString(dir)
+			p := point{x, y}
+			if p == r.pos {
+				fmt.Fprint(&b, dirString(r.dir))
 			} else {
-				t := g[pos]
+				t := r.grid[p]
 				fmt.Fprintf(&b, t.String())
 			}
 		}
@@ -129,59 +164,92 @@ func (g Grid) Draw(p point, dir int) string {
 	return b.String()
 }
 
-func (p *point) nz() bool {
-	return *p != (point{})
+func (r *robot) step(dist int) {
+	r.pos = r.pos.addDir(r.dir, dist)
+}
+
+// takes a normal dir (0123) and returns if was able to move in that direction
+func (r *robot) move(dir int) bool {
+	{ // input
+		r.dir = dir
+		r.cpu.SendInput(translate(dir))
+		r.step(1)
+	}
+	{ // output
+		code := r.cpu.RecvOutput()
+
+		switch code {
+		case 0:
+			// fmt.Println("Hit a wall")
+			r.record(TT_WALL)
+			r.step(-1)
+			return false
+		case 1:
+			// fmt.Println("Success")
+			r.record(TT_EMPTY)
+			return true
+		case 2:
+			// fmt.Println("Success; found goal!")
+			r.record(TT_GOAL)
+			r.goalPos = r.pos
+
+			assert(r.goalPos.nz(), "goal is at 0,0")
+			fmt.Printf("found goal! %v\n", r.goalPos)
+
+			return true
+		default:
+			assert(false, "unknown return code %d", code)
+		}
+	}
+	return false
+}
+
+func makeRobot(cpu *computer.CPU) *robot {
+	return &robot{
+		cpu:  cpu,
+		grid: makeGrid(),
+	}
+}
+
+func promptDir() int {
+	fmt.Printf("dir=? ")
+	code := helpers.ReadLine()
+	switch code {
+	case "d":
+		return 0
+	case "w":
+		return 1
+	case "a":
+		return 2
+	case "s":
+		return 3
+	default:
+		return promptDir()
+	}
+	return 0
 }
 
 func solve(in []int) interface{} {
-	cpu := computer.MakeCPU("pokey")
+	cpu := computer.MakeCPU("robbie")
 	cpu.SetMemory(in)
-	fmt.Println(cpu.PrintProgram())
+	// fmt.Println(cpu.PrintProgram())
 	cpu.Run()
 
-	grid := makeGrid()
-	dir := 0
-	var pos, goalPos point
-	// assert 0,0 is not the actual *real* goal pos
+	r := makeRobot(&cpu)
 	for {
-		switch state := <-cpu.StateChan; state {
-		case computer.CS_WAITING_INPUT:
-			fmt.Printf("dir=? ")
-			var err error
-			dir, err = strconv.Atoi(helpers.ReadLine())
-			helpers.Check(err)
+		dir := promptDir()
 
-			cpu.InChan <- dir
-			pos = pos.addDir(dir, 1)
-		case computer.CS_WAITING_OUTPUT:
-			code := <-cpu.OutChan
-			switch code {
-			case 0:
-				fmt.Println("Hit a wall")
-				grid[pos] = TT_WALL
-				pos = pos.addDir(dir, -1)
-			case 1:
-				fmt.Println("Success")
-				grid[pos] = TT_EMPTY
-			case 2:
-				fmt.Println("Success; found goal!")
-				grid[pos] = TT_GOAL
-				goalPos = pos
-				assert(goalPos.nz(), "goal is at 0,0")
-				fmt.Printf("found goal! %v\n", goalPos)
-			default:
-				assert(false, "unknown return code %d", code)
+		r.move(dir)
+		for d := 0; d < 4; d++ {
+			if r.move(d) {
+				assert(r.move(oppDir(d)), "couldn't unmove")
 			}
+		}
+		r.dir = dir
+		fmt.Printf("pos=%v, dir=%v\n%s\n", r.pos, r.dir, r.Draw())
 
-			fmt.Printf("pos=%v, dir=%v\n%s\n\n%s\n", pos, dir, grid, grid.Draw(pos, dir))
-			if goalPos.nz() {
-				return goalPos
-			}
-		case computer.CS_DONE:
-			fmt.Printf("cpu halted\n")
-			return nil
-		default:
-			assert(false, "unexpected state %s", state)
+		if r.goalPos.nz() {
+			return r.goalPos
 		}
 	}
 }

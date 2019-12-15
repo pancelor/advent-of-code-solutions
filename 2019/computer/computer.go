@@ -252,38 +252,45 @@ func (cpu *CPU) Run() {
 
 			switch code {
 			case 1: // add
+				// fmt.Println(" add")
 				a := cpu.NextParameter()
 				b := cpu.NextParameter()
 				c := cpu.NextParameter()
 				c.Set(a.Get() + b.Get())
 			case 2: // mult
+				// fmt.Println(" mult")
 				a := cpu.NextParameter()
 				b := cpu.NextParameter()
 				c := cpu.NextParameter()
 				c.Set(a.Get() * b.Get())
 			case 3: // input
+				// fmt.Println(" input")
 				a := cpu.NextParameter()
 				cpu.StateChan <- CS_WAITING_INPUT
 				i := <-cpu.InChan
-				// fmt.Printf("%s < %d\n", name, i)
+				// fmt.Printf("%s < %d\n", cpu.Name, i)
 				a.Set(i)
 			case 4: // output
+				// fmt.Println(" output")
 				a := cpu.NextParameter()
 				cpu.StateChan <- CS_WAITING_OUTPUT
 				cpu.OutChan <- a.Get()
 			case 5: // jump-if-true
+				// fmt.Println(" jump-if-true")
 				a := cpu.NextParameter()
 				b := cpu.NextParameter()
 				if a.Get() != 0 {
 					cpu.pc = b.Get()
 				}
 			case 6: // jump-if-false
+				// fmt.Println(" jump-if-false")
 				a := cpu.NextParameter()
 				b := cpu.NextParameter()
 				if a.Get() == 0 {
 					cpu.pc = b.Get()
 				}
 			case 7: // less than
+				// fmt.Println(" less than")
 				a := cpu.NextParameter()
 				b := cpu.NextParameter()
 				c := cpu.NextParameter()
@@ -293,6 +300,7 @@ func (cpu *CPU) Run() {
 					c.Set(0)
 				}
 			case 8: // equals
+				// fmt.Println(" equals")
 				a := cpu.NextParameter()
 				b := cpu.NextParameter()
 				c := cpu.NextParameter()
@@ -302,9 +310,11 @@ func (cpu *CPU) Run() {
 					c.Set(0)
 				}
 			case 9: // adjust relative parameter base
+				// fmt.Println(" adjust relative parameter base")
 				a := cpu.NextParameter()
 				cpu.relBase += a.Get()
 			case 99: // halt
+				// fmt.Println(" halt")
 				cpu.Halted = true
 				cpu.StateChan <- CS_DONE
 				close(cpu.StateChan)
@@ -526,5 +536,6 @@ func (cpu *CPU) PrintProgram() string {
 		}
 		fmt.Fprintf(&s, line)
 	}
+	cpu.pc = 0
 	return s.String()
 }
