@@ -215,6 +215,17 @@ func (r *robot) move(dir int, real bool) bool {
 	return false
 }
 
+func (r *robot) excitingNeighbors() []int {
+	var res []int
+	for d := 0; d < 4; d++ {
+		t := r.grid[r.pos.addDir(d, 1)]
+		if t == TT_UNEXPLORED || t == TT_UNKNOWN {
+			res = append(res, d)
+		}
+	}
+	return res
+}
+
 func makeRobot(cpu *computer.CPU) *robot {
 	r := robot{
 		cpu:  cpu,
@@ -242,6 +253,16 @@ func promptDir() int {
 	return 0
 }
 
+func (r *robot) look() {
+	temp := r.dir
+	for d := 0; d < 4; d++ {
+		if r.move(d, false) {
+			assert(r.move(oppDir(d), false), "couldn't unmove")
+		}
+	}
+	r.dir = temp
+}
+
 func solve(in []int) interface{} {
 	cpu := computer.MakeCPU("robbie")
 	cpu.SetMemory(in)
@@ -249,16 +270,18 @@ func solve(in []int) interface{} {
 	cpu.Run()
 
 	r := makeRobot(&cpu)
+	r.look()
 	for {
-		dir := promptDir()
+		exciting := r.excitingNeighbors()
+		var dir int
+		if len(exciting) == 1 {
+			dir = exciting[0]
+		} else {
+			dir = promptDir()
+		}
 
 		r.move(dir, true)
-		for d := 0; d < 4; d++ {
-			if r.move(d, false) {
-				assert(r.move(oppDir(d), false), "couldn't unmove")
-			}
-		}
-		r.dir = dir
+		r.look()
 		fmt.Printf("pos=%v, dir=%v\n%s\n", r.pos, r.dir, r.Draw())
 
 		if r.goalPos.nz() {
