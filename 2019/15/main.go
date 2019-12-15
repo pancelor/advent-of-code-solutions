@@ -15,7 +15,8 @@ type TileType int
 
 const (
 	TT_UNKNOWN TileType = iota
-	TT_EMPTY
+	TT_UNEXPLORED
+	TT_EXPLORED
 	TT_WALL
 	TT_GOAL
 )
@@ -24,12 +25,14 @@ func (t *TileType) String() string {
 	switch *t {
 	case TT_UNKNOWN:
 		return "-"
-	case TT_EMPTY:
+	case TT_UNEXPLORED:
+		return "*"
+	case TT_EXPLORED:
 		return "."
 	case TT_WALL:
 		return "#"
 	case TT_GOAL:
-		return "*"
+		return "$"
 	}
 	return "?"
 }
@@ -142,8 +145,11 @@ type robot struct {
 
 // record tile type seen at current pos
 func (r *robot) record(t TileType) {
-	fmt.Printf("Recording %s at %v\n", t.String(), r.pos)
-	r.grid[r.pos] = t
+	// fmt.Printf("Recording %s at %v\n", t.String(), r.pos)
+	existing := r.grid[r.pos]
+	if existing == TT_UNKNOWN || existing == TT_UNEXPLORED {
+		r.grid[r.pos] = t
+	}
 }
 
 func (r *robot) Draw() string {
@@ -169,7 +175,7 @@ func (r *robot) step(dist int) {
 }
 
 // takes a normal dir (0123) and returns if was able to move in that direction
-func (r *robot) move(dir int) bool {
+func (r *robot) move(dir int, real bool) bool {
 	{ // input
 		r.dir = dir
 		r.cpu.SendInput(translate(dir))
@@ -186,7 +192,12 @@ func (r *robot) move(dir int) bool {
 			return false
 		case 1:
 			// fmt.Println("Success")
-			r.record(TT_EMPTY)
+			if real {
+				println(1)
+				r.record(TT_EXPLORED)
+			} else {
+				r.record(TT_UNEXPLORED)
+			}
 			return true
 		case 2:
 			// fmt.Println("Success; found goal!")
@@ -205,10 +216,12 @@ func (r *robot) move(dir int) bool {
 }
 
 func makeRobot(cpu *computer.CPU) *robot {
-	return &robot{
+	r := robot{
 		cpu:  cpu,
 		grid: makeGrid(),
 	}
+	r.record(TT_EXPLORED)
+	return &r
 }
 
 func promptDir() int {
@@ -239,10 +252,10 @@ func solve(in []int) interface{} {
 	for {
 		dir := promptDir()
 
-		r.move(dir)
+		r.move(dir, true)
 		for d := 0; d < 4; d++ {
-			if r.move(d) {
-				assert(r.move(oppDir(d)), "couldn't unmove")
+			if r.move(d, false) {
+				assert(r.move(oppDir(d), false), "couldn't unmove")
 			}
 		}
 		r.dir = dir
