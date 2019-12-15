@@ -288,9 +288,6 @@ func (r *robot) explore(fullExplore bool) int {
 			var last int
 			last, hist = hist[len(hist)-1], hist[:len(hist)-1] // pop
 			dir = oppDir(last)
-			if len(hist) > maxDepth {
-				maxDepth = len(hist)
-			}
 			amRewinding = true
 		} else {
 			amRewinding = false
@@ -301,12 +298,18 @@ func (r *robot) explore(fullExplore bool) int {
 		if success && !amRewinding {
 			hist = append(hist, dir)
 		}
+
+		depth := len(hist)
+		if depth > maxDepth {
+			maxDepth = depth
+		}
+
 		if fullExplore {
-			fmt.Printf("pos=%v, dir=%v, goalPos=%v, len(hist)=%v\n%s\n", r.pos, r.dir, r.goalPos, len(hist), r.Draw())
+			fmt.Printf("depth=%v, maxDepth=%v\n%s\n", depth, maxDepth, r.Draw())
 			time.Sleep(3 * time.Millisecond)
 		}
 		if r.pos == r.goalPos && !fullExplore {
-			return len(hist)
+			return depth
 		}
 	}
 }
