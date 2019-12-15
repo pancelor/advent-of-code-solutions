@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/pancelor/advent-of-code-solutions/2019/computer"
 	"github.com/pancelor/advent-of-code-solutions/2019/helpers"
@@ -275,8 +274,8 @@ func (r *robot) explore(fullExplore bool) int {
 	start := r.pos
 	var hist []int // history of directions moved
 	maxDepth := 0
+	r.look()
 	for {
-		r.look()
 		unexplored := r.unexploredNeighbors()
 		var dir int
 		amRewinding := false
@@ -298,6 +297,10 @@ func (r *robot) explore(fullExplore bool) int {
 		if success && !amRewinding {
 			hist = append(hist, dir)
 		}
+		if !success && amRewinding {
+			assert(false, "couldnt rewind")
+		}
+		r.look()
 
 		depth := len(hist)
 		if depth > maxDepth {
@@ -305,8 +308,8 @@ func (r *robot) explore(fullExplore bool) int {
 		}
 
 		if fullExplore {
-			fmt.Printf("depth=%v, maxDepth=%v\n%s\n", depth, maxDepth, r.Draw())
-			time.Sleep(3 * time.Millisecond)
+			// fmt.Printf("depth=%v, maxDepth=%v\n%s\n", depth, maxDepth, r.Draw())
+			// time.Sleep(3 * time.Millisecond)
 		}
 		if r.pos == r.goalPos && !fullExplore {
 			return depth
