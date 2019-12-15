@@ -170,28 +170,6 @@ func (r *robot) Draw() string {
 	return b.String()
 }
 
-func (r *robot) DrawO2(fillMap map[point]FillType) string {
-	var b strings.Builder
-	x1, x2, y1, y2 := r.grid.bounds()
-	for y := y1; y <= y2; y++ {
-		for x := x1; x <= x2; x++ {
-			p := point{x, y}
-			hasO2 := fillMap[p] == FT_O2
-			t := r.grid[p]
-			var s string
-			if hasO2 {
-				assert(t == TT_EXPLORED, "o2 in non-explored location?? %v", p)
-				s = "O"
-			} else {
-				s = t.String()
-			}
-			fmt.Fprintf(&b, s)
-		}
-		fmt.Fprintf(&b, "\n")
-	}
-	return b.String()
-}
-
 func (r *robot) step(dist int) {
 	r.pos = r.pos.addDir(r.dir, dist)
 }
@@ -291,32 +269,45 @@ func (r *robot) look() {
 
 // uses backtracking to explore the entire area
 // assumes the maze is a DAG; does not check to make sure this is true
-func (r *robot) explore() {
+// fullExplore: if true, explore EVERYTHING. if false, move until on top of end
+// returns the number of moves
+func (r *robot) explore(fullExplore bool) int {
+	start := r.pos
 	var hist []int // history of directions moved
+	maxDepth := 0
 	for {
 		r.look()
 		unexplored := r.unexploredNeighbors()
-		undo := false
 		var dir int
+		amRewinding := false
 		if len(unexplored) == 0 {
-			if !r.pos.nz() {
+			if r.pos == start {
 				// we've backtracked all the way back to the start
-				break
+				return maxDepth
 			}
 			var last int
 			last, hist = hist[len(hist)-1], hist[:len(hist)-1] // pop
 			dir = oppDir(last)
-			undo = true
+			if len(hist) > maxDepth {
+				maxDepth = len(hist)
+			}
+			amRewinding = true
 		} else {
+			amRewinding = false
 			dir = unexplored[0]
 		}
 
 		success := r.move(dir, true)
-		if success && !undo {
+		if success && !amRewinding {
 			hist = append(hist, dir)
 		}
-		// fmt.Printf("pos=%v, dir=%v, goalPos=%v, len(hist)=%v\n%s\n", r.pos, r.dir, r.goalPos, len(hist), r.Draw())
-		// time.Sleep(5 * time.Millisecond)
+		if fullExplore {
+			fmt.Printf("pos=%v, dir=%v, goalPos=%v, len(hist)=%v\n%s\n", r.pos, r.dir, r.goalPos, len(hist), r.Draw())
+			time.Sleep(3 * time.Millisecond)
+		}
+		if r.pos == r.goalPos && !fullExplore {
+			return len(hist)
+		}
 	}
 }
 
@@ -327,50 +318,14 @@ func solve(in []int) interface{} {
 	cpu.Run()
 
 	r := makeRobot(&cpu)
-	r.explore()
-	fmt.Printf("goalPos=%v \n%s\n", r.goalPos, r.Draw())
+	// return r.explore(false)
+	r.explore(false)
+	assert(r.pos == r.goalPos, "robot not on goal")
+	fmt.Printf("%s\n", r.Draw())
 
-	// create fillMap
-	fillMap := make(map[point]FillType)
-	for p, t := range r.grid {
-		var ft FillType
-		switch t {
-		case TT_EXPLORED:
-			ft = FT_EMPTY
-		case TT_WALL:
-			ft = FT_WALL
-		default:
-			assert(false, "bad tiletype in fully explored map %d", t)
-		}
-		fillMap[p] = ft
-	}
-
-	// flood fill from goalPos
-	toSpread := []point{r.goalPos}
-	var i int
-	for i = 0; i < len(toSpread); i++ {
-		next := toSpread[i]
-		fillMap[next] = FT_O2
-		for d := 0; d < 4; d++ {
-			candidate := next.addDir(d, 1)
-			if fillMap[candidate] == FT_EMPTY {
-				toSpread = append(toSpread, candidate)
-			}
-		}
-		fmt.Println(r.DrawO2(fillMap))
-		time.Sleep(10 * time.Millisecond)
-	}
-	return i - 1
+	r.grid = makeGrid()
+	return r.explore(true)
 }
-
-type FillType int
-
-const (
-	FT_ERROR FillType = iota
-	FT_EMPTY
-	FT_WALL
-	FT_O2
-)
 
 func main() {
 	answer := solve(prog)
