@@ -1,5 +1,12 @@
 import itertools as itt
 
+def listToDec(vals):
+  total = 0
+  for x in vals:
+    total *= 10
+    total += x
+  return total
+
 #
 # PART 1
 #
@@ -26,13 +33,6 @@ import itertools as itt
 #     vals = list(step(vals))
 #   return vals
 
-# def listToDec(vals):
-#   total = 0
-#   for x in vals:
-#     total *= 10
-#     total += x
-#   return total
-
 # vals = map(int, raw_input())
 # res = stepMany(vals, 100)
 # print listToDec(res[:8])
@@ -56,25 +56,23 @@ def MPowerTopRowIndex(p, i):
   # (each digit of the final answer involves a dot product between M^100 and vals)
   return ncr(p-1+i, p-1)
 
-
-
-vals = map(int, raw_input())
-offset = listToDec(vals[:7])
-print "offset\n", offset
-
-final = 0
-for digit in range(8):
+def findDigit(digit_ix, vals, offset):
   total = 0
   for i in itt.count(0):
-    supervalsIndex = offset + digit + i
+    supervalsIndex = offset + digit_ix + i
     if supervalsIndex%100000 == 0:
       print supervalsIndex, "/", len(vals) * 10000
     if supervalsIndex == len(vals) * 10000:
       break
     valsDigit = vals[supervalsIndex % len(vals)]
-    total += valsDigit * MPowerTopRowIndex(100, i)
+    co = MPowerTopRowIndex(100, i)
+    total += valsDigit * co
     total %= 10
-  print digit, ":", total
-  final *= 10
-  final += total
-print final
+  print "digit #{}: {}".format(digit_ix, total)
+  return total
+
+vals = map(int, raw_input())
+offset = listToDec(vals[:7])
+# print "offset\n", offset
+
+print listToDec([findDigit(d, vals, offset) for d in range(8)])
