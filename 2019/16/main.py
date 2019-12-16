@@ -52,20 +52,34 @@ def ncr(n, r):
   denom = reduce(op.mul, range(1, r+1), 1)
   return numer / denom
 
+last_ncr_args = None
+last_ncr_res = None
+def ncr_memoized(n, r):
+  global last_ncr_args, last_ncr_res
+  if last_ncr_args == (n-1, r):
+    res = (last_ncr_res * n)/(n-r)
+  else:
+    res = ncr(n, r)
+  last_ncr_args = (n, r)
+  last_ncr_res = res
+  return res
+
 def MPowerTopRowIndex(p, i):
   # returns the ith member (0-based) of the top row of M^p,
   # where M is an upper triangular all ones matrix
   # (each digit of the final answer involves a dot product between M^100 and vals)
-  return ncr(p-1+i, p-1)
+  return ncr_memoized(p-1+i, p-1)
 
-def findDigit(digit_ix, vals, offset, mp100tri_cache):
+def findDigit(digit_ix, vals, offset):
   total = 0
   for i in itt.count(0):
     supervalsIndex = offset + digit_ix + i
+    if supervalsIndex % 100000 == 0:
+      print supervalsIndex
     if supervalsIndex == len(vals) * 10000:
       break
     valsDigit = vals[supervalsIndex % len(vals)]
-    total += valsDigit * mp100tri_cache[i]
+    total += valsDigit * MPowerTopRowIndex(100, i)
     total %= 10
   # print "digit #{}: {}".format(digit_ix, total)
   return total
@@ -74,11 +88,4 @@ vals = map(int, raw_input())
 offset = listToDec(vals[:7])
 # print "offset\n", offset
 
-mp100tri_cache = []
-N = len(vals) * 10000 - offset+10
-for i in range(N):
-  if i%100000 == 0:
-    print "precomputing ncr {}/{}".format(i, N)
-  mp100tri_cache.append(MPowerTopRowIndex(100, i))
-
-print listToDec([findDigit(d, vals, offset, mp100tri_cache) for d in range(8)])
+print listToDec([findDigit(d, vals, offset) for d in range(8)])
