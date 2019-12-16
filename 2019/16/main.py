@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import itertools as itt
 
 def listToDec(vals):
@@ -56,23 +58,27 @@ def MPowerTopRowIndex(p, i):
   # (each digit of the final answer involves a dot product between M^100 and vals)
   return ncr(p-1+i, p-1)
 
-def findDigit(digit_ix, vals, offset):
+def findDigit(digit_ix, vals, offset, mp100tri_cache):
   total = 0
   for i in itt.count(0):
     supervalsIndex = offset + digit_ix + i
-    if supervalsIndex%100000 == 0:
-      print supervalsIndex, "/", len(vals) * 10000
     if supervalsIndex == len(vals) * 10000:
       break
     valsDigit = vals[supervalsIndex % len(vals)]
-    co = MPowerTopRowIndex(100, i)
-    total += valsDigit * co
+    total += valsDigit * mp100tri_cache[i]
     total %= 10
-  print "digit #{}: {}".format(digit_ix, total)
+  # print "digit #{}: {}".format(digit_ix, total)
   return total
 
 vals = map(int, raw_input())
 offset = listToDec(vals[:7])
 # print "offset\n", offset
 
-print listToDec([findDigit(d, vals, offset) for d in range(8)])
+mp100tri_cache = []
+N = len(vals) * 10000 - offset+10
+for i in range(N):
+  if i%100000 == 0:
+    print "precomputing ncr {}/{}".format(i, N)
+  mp100tri_cache.append(MPowerTopRowIndex(100, i))
+
+print listToDec([findDigit(d, vals, offset, mp100tri_cache) for d in range(8)])
