@@ -139,7 +139,11 @@ func (p ParamRelativePointer) Set(x int) {
 
 // String .
 func (p ParamRelativePointer) String() string {
-	return fmt.Sprintf("[RB+%d]", p.addr)
+	op := "+"
+	if p.addr < 0 {
+		op = ""
+	}
+	return fmt.Sprintf("[RB%s%d]", op, p.addr)
 }
 
 // NextParameter changes cpu state to return the next parameter at the pc
@@ -440,9 +444,24 @@ func (j JumpLocations) query(loc int) JumpLocationType {
 	return j[loc]
 }
 
+type DataLocations map[int]bool
+
+func makeDataLocs() DataLocations {
+	return make(map[int]bool)
+}
+
+func (d DataLocations) noteParameters(params ...Parameter) {
+	for _, p := range params {
+		if pp, ok := p.(ParamPointer); ok {
+			d[pp.addr] = true
+		}
+	}
+}
+
 func (cpu *CPU) PrintProgram() string {
 	jumpLocs := makeJumpLocations()
 	jumpLocs.enqueue(0)
+	dataLocs := makeDataLocs()
 
 	type Line struct {
 		n    int
@@ -468,21 +487,33 @@ func (cpu *CPU) PrintProgram() string {
 				a := cpu.NextParameter()
 				b := cpu.NextParameter()
 				c := cpu.NextParameter()
-				fmt.Fprintf(&s, "%s = %s+%s\n", c, a, b)
+
+				dataLocs.noteParameters(a, b, c)
+				// don't print [1]+-3; print [1]-3 instead
+				op := "+"
+				if bpl, ok := b.(ParamLiteral); ok && bpl.val < 0 {
+					op = ""
+				}
+
+				fmt.Fprintf(&s, "%s = %s%s%s\n", c, a, op, b)
 			case 2: // mult
 				a := cpu.NextParameter()
 				b := cpu.NextParameter()
 				c := cpu.NextParameter()
+				dataLocs.noteParameters(a, b, c)
 				fmt.Fprintf(&s, "%s = %s*%s\n", c, a, b)
 			case 3: // input
 				a := cpu.NextParameter()
+				dataLocs.noteParameters(a)
 				fmt.Fprintf(&s, "%s = input()\n", a)
 			case 4: // output
 				a := cpu.NextParameter()
+				dataLocs.noteParameters(a)
 				fmt.Fprintf(&s, "output(%s)\n", a)
 			case 5: // jump-if-true
 				a := cpu.NextParameter()
 				b := cpu.NextParameter()
+				dataLocs.noteParameters(a, b)
 				fmt.Fprintf(&s, "if %s { goto %s }", a, b)
 				if lit, ok := b.(ParamLiteral); ok {
 					jumpLocs.enqueue(lit.val)
@@ -493,6 +524,7 @@ func (cpu *CPU) PrintProgram() string {
 			case 6: // jump-if-false
 				a := cpu.NextParameter()
 				b := cpu.NextParameter()
+				dataLocs.noteParameters(a, b)
 				fmt.Fprintf(&s, "if !%s { goto %s }", a, b)
 				if lit, ok := b.(ParamLiteral); ok {
 					jumpLocs.enqueue(lit.val)
@@ -504,14 +536,17 @@ func (cpu *CPU) PrintProgram() string {
 				a := cpu.NextParameter()
 				b := cpu.NextParameter()
 				c := cpu.NextParameter()
+				dataLocs.noteParameters(a, b, c)
 				fmt.Fprintf(&s, "%s = (%s < %s)\n", c, a, b)
 			case 8: // equals
 				a := cpu.NextParameter()
 				b := cpu.NextParameter()
 				c := cpu.NextParameter()
+				dataLocs.noteParameters(a, b, c)
 				fmt.Fprintf(&s, "%s = (%s == %s)\n", c, a, b)
 			case 9: // adjust relative parameter base
 				a := cpu.NextParameter()
+				dataLocs.noteParameters(a)
 				fmt.Fprintf(&s, "RB += %s\n", a)
 			case 99: // halt
 				fmt.Fprintf(&s, "exit\n")
@@ -523,19 +558,27 @@ func (cpu *CPU) PrintProgram() string {
 	}
 
 	var s strings.Builder
+	fmt.Fprintf(&s, "PROGRAM:")
 	for _, l := range lines {
 		n := l.n
 		line := l.line
 
 		doneType := jumpLocs.query(n)
 		if doneType == JLT_DONE {
-			fmt.Fprintf(&s, "\n%3d*: ", n)
+			fmt.Fprintf(&s, "\n%4d*: ", n)
 		} else {
 			assert(doneType == JLT_DONE_BORING, "should be JLT_DONE_BORING (%d)", doneType)
-			fmt.Fprintf(&s, "%3d : ", n)
+			fmt.Fprintf(&s, "%4d : ", n)
 		}
 		fmt.Fprintf(&s, line)
 	}
+
+	fmt.Fprintf(&s, "\nDATA:")
+	for addr, v := range dataLocs {
+		assert(v, "dataLoc is false?")
+		fmt.Fprintf(&s, "\n[%4d] = %d", addr, cpu.mem[addr])
+	}
+
 	cpu.pc = 0
 	return s.String()
 }
