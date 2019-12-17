@@ -343,7 +343,7 @@ var inQueue []byte
 func promptInput() {
 	fmt.Printf("> ")
 	str := helpers.ReadLine() + "\n"
-	fmt.Println("READ:", str)
+	// fmt.Println("READ:", str)
 	inQueue = []byte(str)
 }
 
@@ -364,7 +364,7 @@ func solve(in []int) interface{} {
 			}
 			var b byte
 			b, inQueue = inQueue[0], inQueue[1:]
-			fmt.Printf("sending %q\n", b)
+			// fmt.Printf("sending %q\n", b)
 			cpu.InChan <- int(b)
 		case computer.CS_WAITING_OUTPUT:
 			out := <-cpu.OutChan
