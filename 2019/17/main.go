@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/pancelor/advent-of-code-solutions/2019/computer"
@@ -317,16 +319,54 @@ func (r *robot) explore(fullExplore bool) int {
 	}
 }
 
+var reNum = regexp.MustCompile("^\\d+$")
+
+func stringSeq(s string) (res []int) {
+	for _, word := range strings.Split(s, ",") {
+		var toSend int
+		var err error
+		if reNum.MatchString(word) {
+			toSend, err = strconv.Atoi(word)
+			helpers.Check(err)
+		} else {
+			toSend = int([]byte(word)[0])
+		}
+		res = append(res, toSend)
+		res = append(res, int(','))
+	}
+	res = append(res, int('\n'))
+	return
+}
+
 func solve(in []int) interface{} {
 	cpu := computer.MakeCPU("robbie")
+	in[0] = 2
 	cpu.SetMemory(in)
 	// fmt.Println(cpu.PrintProgram())
 	cpu.Run()
 
 	for {
-		char := cpu.RecvOutput()
-		fmt.Print(string(char))
+		state := <-cpu.StateChan
+		switch state {
+		case computer.CS_WAITING_INPUT:
+			fmt.Printf("> ")
+			str := helpers.ReadLine()
+			for i, code := range stringSeq(str) {
+				fmt.Println("send", code)
+				if i == 0 {
+					cpu.InChan <- code
+				} else {
+					cpu.SendInput(code)
+				}
+			}
+		case computer.CS_WAITING_OUTPUT:
+			char := <-cpu.OutChan
+			fmt.Print(string(char))
+		case computer.CS_DONE:
+			break
+		}
 	}
+	return nil
 }
 
 func main() {
