@@ -186,7 +186,9 @@ func solve(maze *Maze) interface{} {
 	var skipCount int
 	for i := 0; i < len(stateQueue); i++ {
 		current := stateQueue[i]
-		if i%1 == 0 {
+		shouldPrint := i%1000 == 0
+		shouldPrint = false
+		if shouldPrint {
 			fmt.Printf("Cycle %d/%d:\n", i, len(stateQueue))
 			// fmt.Printf("  skipped:     %d\n", skipCount)
 			fmt.Printf("  current: %s\n", current)
@@ -194,14 +196,18 @@ func solve(maze *Maze) interface{} {
 		if oldBest, prs := bestDists[current.state]; prs && oldBest <= current.dist {
 			// if we've already analyzed this state from a better starting point (on some earlier iteration)
 
-			fmt.Printf("  (out of date, skipping (%d<=%d))\n", oldBest, current.dist)
+			if shouldPrint {
+				fmt.Printf("  (out of date, skipping (%d<=%d))\n", oldBest, current.dist)
+			}
 			skipCount++
 			continue
 		} else {
 			bestDists[current.state] = current.dist
-			fmt.Printf("  new best: %d->%d\n", oldBest, current.dist)
-			// fmt.Println("    info:", current.dist, ktemp.KeyDist.dist)
-			// fmt.Println("    info2:", current.state.lastKey, ktemp.KeyID)
+			if shouldPrint {
+				fmt.Printf("  new best: %d->%d\n", oldBest, current.dist)
+				// fmt.Println("    info:", current.dist, ktemp.KeyDist.dist)
+				// fmt.Println("    info2:", current.state.lastKey, ktemp.KeyID)
+			}
 		}
 
 		for _, ktemp := range keyDists.availableKeys(&current.state) {
@@ -209,7 +215,9 @@ func solve(maze *Maze) interface{} {
 				state: current.state.collect(ktemp.KeyID, ktemp.KeyDist.keys),
 				dist:  current.dist + ktemp.KeyDist.dist,
 			}
-			fmt.Printf("    ->: %s\n", new)
+			if shouldPrint {
+				fmt.Printf("    ->: %s\n", new)
+			}
 			stateQueue = append(stateQueue, new)
 		}
 	}
