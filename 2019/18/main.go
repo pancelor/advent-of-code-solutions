@@ -147,24 +147,19 @@ func (maze *Maze) keyAt(p point) KeyID {
 }
 
 func (sd StateDist) String() string {
+	return fmt.Sprintf("%d %s", sd.dist, sd.state)
+}
+
+func (state SolveState) String() string {
 	var s strings.Builder
-	fmt.Fprintf(&s, "%d %s [", sd.dist, sd.state.lastKey)
-	for kid, haveKey := range sd.state.keys {
+	fmt.Fprintf(&s, "(%s)[", state.lastKey)
+	for kid, haveKey := range state.keys {
 		if haveKey {
 			fmt.Fprintf(&s, "%s", KeyID(kid))
 		}
 	}
 	fmt.Fprintf(&s, "]")
 	return s.String()
-}
-
-func shouldEnqueueState(queue []StateDist, new StateDist) bool {
-	for _, past := range queue {
-		if past.state.keys == new.state.keys && past.state.lastKey == new.state.lastKey {
-			return new.dist < past.dist // TODO might want queue to end up toposorted?
-		}
-	}
-	return true
 }
 
 type StateDist struct {
@@ -184,19 +179,19 @@ func solve(maze *Maze) interface{} {
 		dist:  0,
 	})
 	bestDists := make(map[SolveState]int)
-	var enqCount, skipCount, preskipCount int
+	var skipCount int
 	for i := 0; i < len(stateQueue); i++ {
 		past := stateQueue[i]
-		if i%1000 == 0 {
+		if i%10000 == 0 {
 			fmt.Printf("Cycle %d/%d:\n", i, len(stateQueue))
-			fmt.Printf("  enqueued:    %d\n", enqCount)
 			fmt.Printf("  skipped:     %d\n", skipCount)
-			fmt.Printf("  pre-skipped: %d\n", preskipCount)
 			fmt.Printf("  past: %s\n", past)
 		}
 		if updatedBest, prs := bestDists[past.state]; prs && updatedBest < past.dist {
+			// if we've already analyzed this state from a better starting point (on some earlier iteration)
+
 			// fmt.Printf("(out of date)\n")
-			preskipCount++
+			skipCount++
 			continue
 		}
 		// fmt.Printf("\n")
@@ -209,23 +204,18 @@ func solve(maze *Maze) interface{} {
 				dist:  past.dist + keyDists[past.state.lastKey][kid].dist,
 			}
 			if oldBest, prs := bestDists[new.state]; !prs || new.dist < oldBest {
+				if prs {
+					fmt.Println("new best", new.dist, oldBest)
+					fmt.Println("info:", past.dist, keyDists[past.state.lastKey][kid].dist)
+					fmt.Println("info2:", past.state.lastKey, kid)
+				}
 				bestDists[new.state] = new.dist
 			}
 			// fmt.Printf("%v->%v: ", stateQueue[i], new)
-			if shouldEnqueueState(stateQueue, new) {
-				stateQueue = append(stateQueue, new)
-				enqCount++
-				// fmt.Printf("enqueued\n")
-			} else {
-				skipCount++
-				// fmt.Printf("skipped\n")
-			}
+			stateQueue = append(stateQueue, new)
 		}
 		// fmt.Printf("\n")
 	}
-
-	fmt.Println(bestDists)
-	fmt.Println("\nDONE")
 
 	best := 1000000
 	for state, dist := range bestDists {
@@ -247,9 +237,9 @@ func (kd KeyDistances) availableKeys(state *SolveState) (res []KeyID) {
 			// skip keys we already have
 			continue
 		}
-		kdist := submap[kid]
+		kdist, prs := submap[kid]
 		// fmt.Printf("  KeyDist(%s)=%s\n", kid, kdist)
-		if state.hasAllKeys(kdist.locks) {
+		if prs && state.hasAllKeys(kdist.locks) {
 			res = append(res, kid)
 		}
 	}
@@ -257,7 +247,13 @@ func (kd KeyDistances) availableKeys(state *SolveState) (res []KeyID) {
 }
 
 func (state *SolveState) done() bool {
-	for _, haveKey := range state.keys {
+	num := 2
+	for kid, haveKey := range state.keys {
+		if kid+1 > num {
+			// TEMP only two keys in in1.txt
+			fmt.Printf("Reminder: done() only checks %d keys\n", num)
+			break
+		}
 		if !haveKey {
 			return false
 		}
