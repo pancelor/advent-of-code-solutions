@@ -124,14 +124,16 @@ type SolveState struct {
 	lastKey KeyID
 }
 
-func (state *SolveState) collect(lastKey KeyID, otherNewKeys []KeyID) SolveState {
+func (state *SolveState) collect(lastKey KeyID, otherNewKeys [27]bool) SolveState {
 	newState := *state // copy
 
-	for _, kid := range otherNewKeys {
-		// if kid != lastKey && !newState.keys[kid] {
+	for kid, val := range otherNewKeys {
+		// if val && kid != lastKey && !newState.keys[kid] {
 		// 	fmt.Println("force-collecting", kid)
 		// }
-		newState.keys[kid] = true
+		if val {
+			newState.keys[kid] = true
+		}
 	}
 
 	newState.keys[lastKey] = true // (redundant atm)
@@ -141,7 +143,7 @@ func (state *SolveState) collect(lastKey KeyID, otherNewKeys []KeyID) SolveState
 }
 
 func makeSolveState() SolveState {
-	return (&SolveState{}).collect(26, []KeyID{KeyID(26)}) // 26 is the start pseudo-key
+	return (&SolveState{}).collect(26, [27]bool{}) // 26 is the start pseudo-key
 }
 
 func (maze *Maze) keyAt(p point) KeyID {
@@ -175,7 +177,7 @@ func solve(maze *Maze) interface{} {
 	// fmt.Printf("maze:\n%s\n", maze)
 
 	keyDists := precomputeKeyDistances(maze)
-	fmt.Printf("keyDists:\n%s\n", keyDists)
+	// fmt.Printf("keyDists:\n%s\n", keyDists)
 
 	var stateQueue []StateDist
 	stateQueue = append(stateQueue, StateDist{
@@ -186,10 +188,10 @@ func solve(maze *Maze) interface{} {
 	var skipCount int
 	for i := 0; i < len(stateQueue); i++ {
 		current := stateQueue[i]
-		shouldPrint := i%1000 == 0
+		shouldPrint := i%10000 == 0
 		shouldPrint = false
 		if shouldPrint {
-			fmt.Printf("Cycle %d/%d:\n", i, len(stateQueue))
+			fmt.Printf("Cycle %d/%d:\n", i+1, len(stateQueue))
 			// fmt.Printf("  skipped:     %d\n", skipCount)
 			fmt.Printf("  current: %s\n", current)
 		}
@@ -205,8 +207,6 @@ func solve(maze *Maze) interface{} {
 			bestDists[current.state] = current.dist
 			if shouldPrint {
 				fmt.Printf("  new best: %d->%d\n", oldBest, current.dist)
-				// fmt.Println("    info:", current.dist, ktemp.KeyDist.dist)
-				// fmt.Println("    info2:", current.state.lastKey, ktemp.KeyID)
 			}
 		}
 
@@ -227,6 +227,7 @@ func solve(maze *Maze) interface{} {
 		if !state.done() {
 			continue
 		}
+		// fmt.Println("candidate", state, dist)
 		if dist < best {
 			best = dist
 		}
@@ -239,14 +240,11 @@ type KeyTemp struct {
 	KeyID
 }
 
-// availableKeys returns keys that are not yet gotten but are available to be gotten
+// availableKeys returns keys that are available to be gotten
+// note: this will often return keys we've already gotten (useful as checkpoints)
 func (kd KeyDistances) availableKeys(state *SolveState) (res []KeyTemp) {
 	submap := kd[state.lastKey]
 	for kid := KeyID(0); kid < 27; kid++ {
-		if state.keys[kid] {
-			// skip keys we already have
-			continue
-		}
 		kdist, prs := submap[kid]
 		// fmt.Printf("  KeyDist(%s)=%s\n", kid, kdist)
 		if prs && state.hasAllKeys(kdist.locks) {
@@ -268,32 +266,22 @@ func (state *SolveState) done() bool {
 	return true
 }
 
-func (state *SolveState) hasAllKeys(kids []KeyID) bool {
-	have := make(map[KeyID]bool)
-	for _, kid := range kids {
-		have[kid] = false
-	}
+func (state *SolveState) hasAllKeys(kids [27]bool) bool {
+	// unset keys we have
 	for kid, haveKey := range state.keys {
 		if haveKey {
-			have[KeyID(kid)] = true
+			kids[KeyID(kid)] = false
 		}
 	}
-	for _, v := range have {
-		if !v {
+
+	// are there any keys still set?
+	for _, v := range kids {
+		if v {
 			return false
 		}
 	}
 	return true
 }
-
-// func (state *SolveState) hasAllKeys(kids []KeyID) bool {
-// 	for _, kid := range kids {
-// 		if !state.keys[kid] {
-// 			return false
-// 		}
-// 	}
-// 	return true
-// }
 
 // KeyID is 0-25 for an alphabetic key, or 26 for the start pseudo-key
 type KeyID int
@@ -322,8 +310,8 @@ func (kds KeyDistances) String() string {
 
 type KeyDist struct {
 	dist  int
-	locks []KeyID
-	keys  []KeyID
+	locks [27]bool
+	keys  [27]bool
 }
 
 func (kd KeyDist) String() string {
@@ -331,15 +319,19 @@ func (kd KeyDist) String() string {
 	fmt.Fprintf(&s, "%d", kd.dist)
 	if len(kd.locks) > 0 {
 		fmt.Fprintf(&s, "(")
-		for _, lock := range kd.locks {
-			fmt.Fprintf(&s, "%s", strings.ToUpper(lock.String()))
+		for kid, val := range kd.locks {
+			if val {
+				fmt.Fprintf(&s, "%s", strings.ToUpper(KeyID(kid).String()))
+			}
 		}
 		fmt.Fprintf(&s, ")")
 	}
 	if len(kd.keys) > 0 {
 		fmt.Fprintf(&s, "(")
-		for _, lock := range kd.keys {
-			fmt.Fprintf(&s, "%s", lock.String())
+		for kid, val := range kd.keys {
+			if val {
+				fmt.Fprintf(&s, "%s", KeyID(kid).String())
+			}
 		}
 		fmt.Fprintf(&s, ")")
 	}
@@ -368,8 +360,8 @@ type VisitTracker map[point]VisitInfo
 type VisitInfo struct {
 	tag   VisitType
 	dist  int
-	locks []KeyID
-	keys  []KeyID
+	locks [27]bool
+	keys  [27]bool
 }
 
 func makeVisitTracker() VisitTracker {
@@ -407,9 +399,9 @@ func precomputeKeyDistancesFrom(maze *Maze, kid KeyID) map[KeyID]KeyDist {
 		case TT_WALL:
 			continue // don't add neighbors
 		case TT_LOCK:
-			locks = append(locks, tile.kid)
+			locks[tile.kid] = true
 		case TT_KEY:
-			keys = append(keys, tile.kid)
+			keys[tile.kid] = true
 			if tile.kid == kid {
 				assert(dist == 0, "loop?") // note: this is not an exhaustive loop check
 			} else {
