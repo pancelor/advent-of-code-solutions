@@ -118,15 +118,27 @@ func (maze *Maze) String() string {
 }
 
 type SolveState struct {
-	keys    map[KeyID]bool // one per alphabet letter + one for start
-	steps   int
+	keys    [27]bool // one per alphabet letter + one for start
+	dist    int
 	lastKey KeyID
 }
 
+func (state *SolveState) collect(lastKey KeyID) SolveState {
+	// newState := makeSolveState(lastKey)
+	// newState.dist = state.dist
+	// for k, v := range state.keys {
+	// 	newState.keys[k] = v
+	// }
+
+	newState := *state // copy
+	newState.keys[lastKey] = true
+	newState.lastKey = lastKey
+
+	return newState
+}
+
 func makeSolveState() SolveState {
-	return SolveState{
-		keys: make(map[KeyID]bool),
-	}
+	return (&SolveState{}).collect(26) // 26 is the start pseudo-key
 }
 
 func (maze *Maze) keyAt(p point) KeyID {
@@ -135,18 +147,25 @@ func (maze *Maze) keyAt(p point) KeyID {
 	return tile.kid
 }
 
-func (state *SolveState) String() string {
+func (state SolveState) String() string {
 	var s strings.Builder
-	fmt.Fprintf(&s, "%d %s [", state.steps, state.lastKey.String())
-	for i, b := range state.keys {
-		if b {
-			fmt.Fprintf(&s, "%s", byte(i+'a'))
-		} else {
-			fmt.Fprintf(&s, ".")
+	fmt.Fprintf(&s, "%d %s [", state.dist, state.lastKey)
+	for kid, haveKey := range state.keys {
+		if haveKey {
+			fmt.Fprintf(&s, "%s", KeyID(kid))
 		}
 	}
 	fmt.Fprintf(&s, "]")
 	return s.String()
+}
+
+func shouldEnqueueState(queue []SolveState, newState SolveState) bool {
+	for _, past := range queue {
+		if past.keys == newState.keys && past.lastKey == newState.lastKey {
+			return newState.dist < past.dist // TODO might want queue to end up toposorted?
+		}
+	}
+	return true
 }
 
 // store key locations
@@ -159,15 +178,32 @@ func solve(maze *Maze) interface{} {
 	fmt.Printf("keyDists:\n%s\n", keyDists)
 
 	var stateQueue []SolveState
-	s := makeSolveState()
-	s.lastKey = 26 // 26 is the start pseudo-key
-	stateQueue = append(stateQueue, s)
+	stateQueue = append(stateQueue, makeSolveState())
+	var enqCount, skipCount int
 	for i := 0; i < len(stateQueue); i++ {
-		state := stateQueue[i]
-		for _, kid := range keyDists.availableKeys(&state) {
-			fmt.Printf("Available key: %s\n", kid)
-			// TODO
+		if i%100 == 0 {
+			fmt.Printf("Cycle %d/%d:\n", i, len(stateQueue))
+			fmt.Printf("  enqueued: %d\n", enqCount)
+			fmt.Printf("  skipped:  %d\n", skipCount)
 		}
+		state := stateQueue[i]
+		fmt.Printf("Popped state: %s\n", state)
+		// fmt.Printf("  Available keys:")
+		for _, kid := range keyDists.availableKeys(&state) {
+			// fmt.Printf(" %s", kid)
+			newState := state.collect(kid)
+			newState.dist = state.dist + keyDists[state.lastKey][kid].dist
+			// fmt.Printf("%s->%s: ", state, newState)
+			if shouldEnqueueState(stateQueue, newState) {
+				stateQueue = append(stateQueue, newState)
+				enqCount++
+				// fmt.Printf("enqueued\n")
+			} else {
+				skipCount++
+				// fmt.Printf("skipped\n")
+			}
+		}
+		// fmt.Printf("\n")
 	}
 	return nil
 }
@@ -176,8 +212,12 @@ func solve(maze *Maze) interface{} {
 func (kd KeyDistances) availableKeys(state *SolveState) (res []KeyID) {
 	submap := kd[state.lastKey]
 	for kid := KeyID(0); kid < 27; kid++ {
+		if state.keys[kid] {
+			// skip keys we already have
+			continue
+		}
 		kdist := submap[kid]
-		fmt.Println(kid, kdist)
+		// fmt.Printf("  KeyDist(%s)=%s\n", kid, kdist)
 		if state.hasAllKeys(kdist.locks) {
 			res = append(res, kid)
 		}
@@ -186,13 +226,31 @@ func (kd KeyDistances) availableKeys(state *SolveState) (res []KeyID) {
 }
 
 func (state *SolveState) hasAllKeys(kids []KeyID) bool {
+	have := make(map[KeyID]bool)
 	for _, kid := range kids {
-		if !state.keys[kid] {
+		have[kid] = false
+	}
+	for kid, haveKey := range state.keys {
+		if haveKey {
+			have[KeyID(kid)] = true
+		}
+	}
+	for _, v := range have {
+		if !v {
 			return false
 		}
 	}
 	return true
 }
+
+// func (state *SolveState) hasAllKeys(kids []KeyID) bool {
+// 	for _, kid := range kids {
+// 		if !state.keys[kid] {
+// 			return false
+// 		}
+// 	}
+// 	return true
+// }
 
 // KeyID is 0-25 for an alphabetic key, or 26 for the start pseudo-key
 type KeyID int
