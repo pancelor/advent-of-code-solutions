@@ -124,22 +124,24 @@ type SolveState struct {
 	lastKey KeyID
 }
 
-func (state *SolveState) collect(lastKey KeyID) SolveState {
-	// newState := makeSolveState(lastKey)
-	// newState.dist = state.dist
-	// for k, v := range state.keys {
-	// 	newState.keys[k] = v
-	// }
-
+func (state *SolveState) collect(lastKey KeyID, otherNewKeys []KeyID) SolveState {
 	newState := *state // copy
-	newState.keys[lastKey] = true
+
+	for _, kid := range otherNewKeys {
+		// if kid != lastKey && !newState.keys[kid] {
+		// 	fmt.Println("force-collecting", kid)
+		// }
+		newState.keys[kid] = true
+	}
+
+	newState.keys[lastKey] = true // (redundant atm)
 	newState.lastKey = lastKey
 
 	return newState
 }
 
 func makeSolveState() SolveState {
-	return (&SolveState{}).collect(26) // 26 is the start pseudo-key
+	return (&SolveState{}).collect(26, []KeyID{KeyID(26)}) // 26 is the start pseudo-key
 }
 
 func (maze *Maze) keyAt(p point) KeyID {
@@ -197,16 +199,16 @@ func solve(maze *Maze) interface{} {
 			continue
 		}
 
-		for _, kid := range keyDists.availableKeys(&past.state) {
+		for _, ktemp := range keyDists.availableKeys(&past.state) {
 			new := StateDist{
-				state: past.state.collect(kid),
-				dist:  past.dist + keyDists[past.state.lastKey][kid].dist,
+				state: past.state.collect(ktemp.KeyID, ktemp.KeyDist.keys),
+				dist:  past.dist + ktemp.KeyDist.dist,
 			}
 			if oldBest, prs := bestDists[new.state]; !prs || new.dist < oldBest {
 				if prs {
 					fmt.Println("  new best", new.dist, oldBest)
-					fmt.Println("    info:", past.dist, keyDists[past.state.lastKey][kid].dist)
-					fmt.Println("    info2:", past.state.lastKey, kid)
+					fmt.Println("    info:", past.dist, ktemp.KeyDist.dist)
+					fmt.Println("    info2:", past.state.lastKey, ktemp.KeyID)
 				}
 				bestDists[new.state] = new.dist
 			}
@@ -227,8 +229,13 @@ func solve(maze *Maze) interface{} {
 	return best
 }
 
+type KeyTemp struct {
+	KeyDist
+	KeyID
+}
+
 // availableKeys returns keys that are not yet gotten but are available to be gotten
-func (kd KeyDistances) availableKeys(state *SolveState) (res []KeyID) {
+func (kd KeyDistances) availableKeys(state *SolveState) (res []KeyTemp) {
 	submap := kd[state.lastKey]
 	for kid := KeyID(0); kid < 27; kid++ {
 		if state.keys[kid] {
@@ -238,7 +245,7 @@ func (kd KeyDistances) availableKeys(state *SolveState) (res []KeyID) {
 		kdist, prs := submap[kid]
 		// fmt.Printf("  KeyDist(%s)=%s\n", kid, kdist)
 		if prs && state.hasAllKeys(kdist.locks) {
-			res = append(res, kid)
+			res = append(res, KeyTemp{kdist, kid})
 		}
 	}
 	return
@@ -311,6 +318,7 @@ func (kds KeyDistances) String() string {
 type KeyDist struct {
 	dist  int
 	locks []KeyID
+	keys  []KeyID
 }
 
 func (kd KeyDist) String() string {
@@ -319,6 +327,13 @@ func (kd KeyDist) String() string {
 	if len(kd.locks) > 0 {
 		fmt.Fprintf(&s, "(")
 		for _, lock := range kd.locks {
+			fmt.Fprintf(&s, "%s", strings.ToUpper(lock.String()))
+		}
+		fmt.Fprintf(&s, ")")
+	}
+	if len(kd.keys) > 0 {
+		fmt.Fprintf(&s, "(")
+		for _, lock := range kd.keys {
 			fmt.Fprintf(&s, "%s", lock.String())
 		}
 		fmt.Fprintf(&s, ")")
@@ -349,6 +364,7 @@ type VisitInfo struct {
 	tag   VisitType
 	dist  int
 	locks []KeyID
+	keys  []KeyID
 }
 
 func makeVisitTracker() VisitTracker {
@@ -375,6 +391,7 @@ func precomputeKeyDistancesFrom(maze *Maze, kid KeyID) map[KeyID]KeyDist {
 			break
 		}
 		locks := info.locks
+		keys := info.keys
 		dist := info.dist
 
 		tile := maze.tiles[p.y][p.x]
@@ -387,12 +404,14 @@ func precomputeKeyDistancesFrom(maze *Maze, kid KeyID) map[KeyID]KeyDist {
 		case TT_LOCK:
 			locks = append(locks, tile.kid)
 		case TT_KEY:
+			keys = append(keys, tile.kid)
 			if tile.kid == kid {
-				assert(dist == 0, "loop?") // not an exhaustive loop check
+				assert(dist == 0, "loop?") // note: this is not an exhaustive loop check
 			} else {
 				res[tile.kid] = KeyDist{
 					dist:  dist,
 					locks: locks,
+					keys:  keys,
 				}
 			}
 		default:
@@ -401,7 +420,7 @@ func precomputeKeyDistancesFrom(maze *Maze, kid KeyID) map[KeyID]KeyDist {
 
 		for _, np := range p.neighbors() {
 			if visited[np].tag == VT_UNVISITED {
-				visited[np] = VisitInfo{tag: VT_FRONTEIR, dist: dist + 1, locks: locks}
+				visited[np] = VisitInfo{tag: VT_FRONTEIR, dist: dist + 1, locks: locks, keys: keys}
 			}
 		}
 	}
