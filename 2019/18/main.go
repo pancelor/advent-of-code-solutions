@@ -188,8 +188,8 @@ func solve(maze *Maze) interface{} {
 	var skipCount int
 	for i := 0; i < len(stateQueue); i++ {
 		current := stateQueue[i]
-		shouldPrint := i%10000 == 0
-		shouldPrint = false
+		shouldPrint := i%100000 == 0
+		// shouldPrint = false
 		if shouldPrint {
 			fmt.Printf("Cycle %d/%d:\n", i+1, len(stateQueue))
 			// fmt.Printf("  skipped:     %d\n", skipCount)
