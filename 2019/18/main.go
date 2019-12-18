@@ -185,32 +185,29 @@ func solve(maze *Maze) interface{} {
 	bestDists := make(map[SolveState]int)
 	var skipCount int
 	for i := 0; i < len(stateQueue); i++ {
-		past := stateQueue[i]
+		current := stateQueue[i]
 		if i%1 == 0 {
 			fmt.Printf("Cycle %d/%d:\n", i, len(stateQueue))
 			// fmt.Printf("  skipped:     %d\n", skipCount)
-			fmt.Printf("  past: %s\n", past)
+			fmt.Printf("  current: %s\n", current)
 		}
-		if updatedBest, prs := bestDists[past.state]; prs && updatedBest < past.dist {
+		if oldBest, prs := bestDists[current.state]; prs && oldBest <= current.dist {
 			// if we've already analyzed this state from a better starting point (on some earlier iteration)
 
-			fmt.Printf("  (out of date, skipping)\n")
+			fmt.Printf("  (out of date, skipping (%d<=%d))\n", oldBest, current.dist)
 			skipCount++
 			continue
+		} else {
+			bestDists[current.state] = current.dist
+			fmt.Printf("  new best: %d->%d\n", oldBest, current.dist)
+			// fmt.Println("    info:", current.dist, ktemp.KeyDist.dist)
+			// fmt.Println("    info2:", current.state.lastKey, ktemp.KeyID)
 		}
 
-		for _, ktemp := range keyDists.availableKeys(&past.state) {
+		for _, ktemp := range keyDists.availableKeys(&current.state) {
 			new := StateDist{
-				state: past.state.collect(ktemp.KeyID, ktemp.KeyDist.keys),
-				dist:  past.dist + ktemp.KeyDist.dist,
-			}
-			if oldBest, prs := bestDists[new.state]; !prs || new.dist < oldBest {
-				if prs {
-					fmt.Println("  new best", new.dist, oldBest)
-					fmt.Println("    info:", past.dist, ktemp.KeyDist.dist)
-					fmt.Println("    info2:", past.state.lastKey, ktemp.KeyID)
-				}
-				bestDists[new.state] = new.dist
+				state: current.state.collect(ktemp.KeyID, ktemp.KeyDist.keys),
+				dist:  current.dist + ktemp.KeyDist.dist,
 			}
 			fmt.Printf("    ->: %s\n", new)
 			stateQueue = append(stateQueue, new)
