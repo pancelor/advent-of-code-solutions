@@ -10,6 +10,8 @@ import (
 var assert = helpers.Assert
 var check = helpers.Check
 
+var HighestKeyID KeyID
+
 type TileType int
 
 const (
@@ -182,39 +184,35 @@ func solve(maze *Maze) interface{} {
 	var skipCount int
 	for i := 0; i < len(stateQueue); i++ {
 		past := stateQueue[i]
-		if i%10000 == 0 {
+		if i%1 == 0 {
 			fmt.Printf("Cycle %d/%d:\n", i, len(stateQueue))
-			fmt.Printf("  skipped:     %d\n", skipCount)
+			// fmt.Printf("  skipped:     %d\n", skipCount)
 			fmt.Printf("  past: %s\n", past)
 		}
 		if updatedBest, prs := bestDists[past.state]; prs && updatedBest < past.dist {
 			// if we've already analyzed this state from a better starting point (on some earlier iteration)
 
-			// fmt.Printf("(out of date)\n")
+			fmt.Printf("  (out of date, skipping)\n")
 			skipCount++
 			continue
 		}
-		// fmt.Printf("\n")
 
-		// fmt.Printf("  Available keys:")
 		for _, kid := range keyDists.availableKeys(&past.state) {
-			// fmt.Printf(" %s", kid)
 			new := StateDist{
 				state: past.state.collect(kid),
 				dist:  past.dist + keyDists[past.state.lastKey][kid].dist,
 			}
 			if oldBest, prs := bestDists[new.state]; !prs || new.dist < oldBest {
 				if prs {
-					fmt.Println("new best", new.dist, oldBest)
-					fmt.Println("info:", past.dist, keyDists[past.state.lastKey][kid].dist)
-					fmt.Println("info2:", past.state.lastKey, kid)
+					fmt.Println("  new best", new.dist, oldBest)
+					fmt.Println("    info:", past.dist, keyDists[past.state.lastKey][kid].dist)
+					fmt.Println("    info2:", past.state.lastKey, kid)
 				}
 				bestDists[new.state] = new.dist
 			}
-			// fmt.Printf("%v->%v: ", stateQueue[i], new)
+			fmt.Printf("    ->: %s\n", new)
 			stateQueue = append(stateQueue, new)
 		}
-		// fmt.Printf("\n")
 	}
 
 	best := 1000000
@@ -247,11 +245,8 @@ func (kd KeyDistances) availableKeys(state *SolveState) (res []KeyID) {
 }
 
 func (state *SolveState) done() bool {
-	num := 2
 	for kid, haveKey := range state.keys {
-		if kid+1 > num {
-			// TEMP only two keys in in1.txt
-			fmt.Printf("Reminder: done() only checks %d keys\n", num)
+		if KeyID(kid) > HighestKeyID {
 			break
 		}
 		if !haveKey {
@@ -442,6 +437,9 @@ func getInput() (*Maze, error) {
 			}
 			if tile.tag == TT_KEY {
 				maze.keyLocs[tile.kid] = p
+				if tile.kid != 26 && tile.kid > HighestKeyID {
+					HighestKeyID = tile.kid
+				}
 			}
 		}
 
