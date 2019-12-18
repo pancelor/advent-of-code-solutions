@@ -119,7 +119,6 @@ func (maze *Maze) String() string {
 
 type SolveState struct {
 	keys    [27]bool // one per alphabet letter + one for start
-	dist    int
 	lastKey KeyID
 }
 
@@ -147,10 +146,10 @@ func (maze *Maze) keyAt(p point) KeyID {
 	return tile.kid
 }
 
-func (state SolveState) String() string {
+func (sd StateDist) String() string {
 	var s strings.Builder
-	fmt.Fprintf(&s, "%d %s [", state.dist, state.lastKey)
-	for kid, haveKey := range state.keys {
+	fmt.Fprintf(&s, "%d %s [", sd.dist, sd.state.lastKey)
+	for kid, haveKey := range sd.state.keys {
 		if haveKey {
 			fmt.Fprintf(&s, "%s", KeyID(kid))
 		}
@@ -159,43 +158,62 @@ func (state SolveState) String() string {
 	return s.String()
 }
 
-func shouldEnqueueState(queue []SolveState, newState SolveState) bool {
+func shouldEnqueueState(queue []StateDist, new StateDist) bool {
 	for _, past := range queue {
-		if past.keys == newState.keys && past.lastKey == newState.lastKey {
-			return newState.dist < past.dist // TODO might want queue to end up toposorted?
+		if past.state.keys == new.state.keys && past.state.lastKey == new.state.lastKey {
+			return new.dist < past.dist // TODO might want queue to end up toposorted?
 		}
 	}
 	return true
 }
 
-// store key locations
-// solver.dist() gives distance between two points
-// solver.available() returns available keys
+type StateDist struct {
+	state SolveState
+	dist  int
+}
+
 func solve(maze *Maze) interface{} {
 	// fmt.Printf("maze:\n%s\n", maze)
 
 	keyDists := precomputeKeyDistances(maze)
 	fmt.Printf("keyDists:\n%s\n", keyDists)
 
-	var stateQueue []SolveState
-	stateQueue = append(stateQueue, makeSolveState())
-	var enqCount, skipCount int
+	var stateQueue []StateDist
+	stateQueue = append(stateQueue, StateDist{
+		state: makeSolveState(),
+		dist:  0,
+	})
+	bestDists := make(map[SolveState]int)
+	var enqCount, skipCount, preskipCount int
 	for i := 0; i < len(stateQueue); i++ {
-		if i%100 == 0 {
+		past := stateQueue[i]
+		if i%1000 == 0 {
 			fmt.Printf("Cycle %d/%d:\n", i, len(stateQueue))
-			fmt.Printf("  enqueued: %d\n", enqCount)
-			fmt.Printf("  skipped:  %d\n", skipCount)
+			fmt.Printf("  enqueued:    %d\n", enqCount)
+			fmt.Printf("  skipped:     %d\n", skipCount)
+			fmt.Printf("  pre-skipped: %d\n", preskipCount)
+			fmt.Printf("  past: %s\n", past)
 		}
-		state := stateQueue[i]
-		fmt.Printf("Popped state: %s\n", state)
+		if updatedBest, prs := bestDists[past.state]; prs && updatedBest < past.dist {
+			// fmt.Printf("(out of date)\n")
+			preskipCount++
+			continue
+		}
+		// fmt.Printf("\n")
+
 		// fmt.Printf("  Available keys:")
-		for _, kid := range keyDists.availableKeys(&state) {
+		for _, kid := range keyDists.availableKeys(&past.state) {
 			// fmt.Printf(" %s", kid)
-			newState := state.collect(kid)
-			newState.dist = state.dist + keyDists[state.lastKey][kid].dist
-			// fmt.Printf("%s->%s: ", state, newState)
-			if shouldEnqueueState(stateQueue, newState) {
-				stateQueue = append(stateQueue, newState)
+			new := StateDist{
+				state: past.state.collect(kid),
+				dist:  past.dist + keyDists[past.state.lastKey][kid].dist,
+			}
+			if oldBest, prs := bestDists[new.state]; !prs || new.dist < oldBest {
+				bestDists[new.state] = new.dist
+			}
+			// fmt.Printf("%v->%v: ", stateQueue[i], new)
+			if shouldEnqueueState(stateQueue, new) {
+				stateQueue = append(stateQueue, new)
 				enqCount++
 				// fmt.Printf("enqueued\n")
 			} else {
@@ -205,7 +223,20 @@ func solve(maze *Maze) interface{} {
 		}
 		// fmt.Printf("\n")
 	}
-	return nil
+
+	fmt.Println(bestDists)
+	fmt.Println("\nDONE")
+
+	best := 1000000
+	for state, dist := range bestDists {
+		if !state.done() {
+			continue
+		}
+		if dist < best {
+			best = dist
+		}
+	}
+	return best
 }
 
 // availableKeys returns keys that are not yet gotten but are available to be gotten
@@ -223,6 +254,15 @@ func (kd KeyDistances) availableKeys(state *SolveState) (res []KeyID) {
 		}
 	}
 	return
+}
+
+func (state *SolveState) done() bool {
+	for _, haveKey := range state.keys {
+		if !haveKey {
+			return false
+		}
+	}
+	return true
 }
 
 func (state *SolveState) hasAllKeys(kids []KeyID) bool {
