@@ -426,6 +426,20 @@ func (state SolveState) collect(rid int, lastKey KeyID, otherNewKeys [NKeys]bool
 	return state
 }
 
+// numKeys returns the number of (real) keys in this state
+func (state *SolveState) numKeys() int {
+	count := 0
+	for kid, haveKey := range state.keys {
+		if KeyID(kid) > HighestKeyID {
+			break
+		}
+		if haveKey {
+			count++
+		}
+	}
+	return count
+}
+
 // done returns whether the state is fully solved (i.e. all keys are collected)
 func (state *SolveState) done() bool {
 	for kid, haveKey := range state.keys {
@@ -495,12 +509,17 @@ func solveKD(keyDists KeyDistances) int {
 	for i := 0; i < len(stateQueue); i++ {
 		// pop current from stateQueue
 		current := stateQueue[i]
-		shouldPrint := i%10000 == 0
-		shouldPrint = false
+
+		fmt.Println(current.state.numKeys())
+		// shouldPrint := i%10000 == 0
+		shouldPrint := false
+		// shouldPrint := true
+
 		if shouldPrint {
 			fmt.Printf("Cycle %d/%d:\n", i+1, len(stateQueue))
 			// fmt.Printf("  skipped:     %d\n", skipCount)
 			fmt.Printf("  current: %s\n", current)
+			fmt.Printf("  numKeys: %d\n", current.state.numKeys())
 		}
 		if oldBest, prs := bestDists[current.state]; prs && oldBest <= current.dist {
 			// if we've already analyzed this state from a better starting point (on some earlier iteration)
