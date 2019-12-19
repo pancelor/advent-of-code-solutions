@@ -10,9 +10,11 @@ import (
 var assert = helpers.Assert
 var check = helpers.Check
 
+///////////////////////////////////////////////////////////////////////////////
 //
 // General Program Setup
 //
+///////////////////////////////////////////////////////////////////////////////
 
 // NRobots is the number of robots in the maze
 // Also, it's the number of start tiles (@)
@@ -55,9 +57,11 @@ func getInput() *Maze {
 	return &maze
 }
 
+///////////////////////////////////////////////////////////////////////////////
 //
 // Basic Types
 //
+///////////////////////////////////////////////////////////////////////////////
 
 type TileType int
 
@@ -210,9 +214,155 @@ func (maze *Maze) keyLoc(kid KeyID) point {
 	return point{}
 }
 
+///////////////////////////////////////////////////////////////////////////////
 //
-// Complicated Types
+// KeyDistances computation
 //
+///////////////////////////////////////////////////////////////////////////////
+
+// KeyDistances keeps track of distances between keys.
+type KeyDistances map[KeyID]map[KeyID]KeyDist
+
+func (kds KeyDistances) String() string {
+	var s strings.Builder
+	for kidA := KeyID(0); kidA < NKeys; kidA++ {
+		for kidB := KeyID(0); kidB < NKeys; kidB++ {
+			if kd, prs := kds[kidA][kidB]; prs {
+				fmt.Fprintf(&s, "[%s->%s]=%s, ", kidA, kidB, kd)
+			}
+		}
+	}
+	return s.String()
+}
+
+// KeyDist represents the distance between two keys,
+// along with the locks that are blocking this path
+// and the keys that are "blocking" the path
+// (storing the keys helps us reduce the branching factor of our algorithm
+// by eagerly picking up keys that are along the path)
+// !!! This assumes the maze has no cycles - the whole algorithm falls apart otherwise!!!
+type KeyDist struct {
+	dist  int
+	locks [NKeys]bool
+	keys  [NKeys]bool
+}
+
+func (kd KeyDist) String() string {
+	var s strings.Builder
+	fmt.Fprintf(&s, "%d", kd.dist)
+	if len(kd.locks) > 0 {
+		fmt.Fprintf(&s, "(")
+		for kid, val := range kd.locks {
+			if val {
+				fmt.Fprintf(&s, "%s", strings.ToUpper(KeyID(kid).String()))
+			}
+		}
+		fmt.Fprintf(&s, ")")
+	}
+	if len(kd.keys) > 0 {
+		fmt.Fprintf(&s, "(")
+		for kid, val := range kd.keys {
+			if val {
+				fmt.Fprintf(&s, "%s", KeyID(kid).String())
+			}
+		}
+		fmt.Fprintf(&s, ")")
+	}
+	return s.String()
+}
+
+// assumes the maze has no cycles - the whole algorithm falls apart otherwise
+func precomputeKeyDistances(maze *Maze) KeyDistances {
+	res := make(map[KeyID]map[KeyID]KeyDist)
+	for kid := KeyID(0); kid < NKeys; kid++ {
+		res[kid] = precomputeKeyDistancesFrom(maze, kid)
+	}
+	return res
+}
+
+type VisitType int
+
+const (
+	VT_UNVISITED VisitType = iota
+	VT_VISITED
+	VT_FRONTEIR
+)
+
+type VisitTracker map[point]VisitInfo
+
+type VisitInfo struct {
+	tag   VisitType
+	dist  int
+	locks [NKeys]bool
+	keys  [NKeys]bool
+}
+
+func makeVisitTracker() VisitTracker {
+	return make(map[point]VisitInfo)
+}
+
+func (vt VisitTracker) nextToVisit() (point, VisitInfo, bool) {
+	for p, info := range vt {
+		if info.tag == VT_FRONTEIR {
+			return p, info, true
+		}
+	}
+	return point{}, VisitInfo{}, false
+}
+
+func precomputeKeyDistancesFrom(maze *Maze, kid KeyID) map[KeyID]KeyDist {
+	res := make(map[KeyID]KeyDist)
+
+	visited := makeVisitTracker()
+	visited[maze.keyLoc(kid)] = VisitInfo{tag: VT_FRONTEIR}
+	for {
+		p, info, ok := visited.nextToVisit()
+		if !ok {
+			break
+		}
+		locks := info.locks
+		keys := info.keys
+		dist := info.dist
+
+		tile := maze.tiles[p.y][p.x]
+		visited[p] = VisitInfo{tag: VT_VISITED, dist: dist}
+		switch tile.tag {
+		case TT_EMPTY:
+			// nothing special
+		case TT_WALL:
+			continue // don't add neighbors
+		case TT_LOCK:
+			locks[tile.kid] = true
+		case TT_KEY:
+			keys[tile.kid] = true
+			if tile.kid == kid {
+				assert(dist == 0, "loop?") // note: this is not an exhaustive loop check
+			} else {
+				res[tile.kid] = KeyDist{
+					dist:  dist,
+					locks: locks,
+					keys:  keys,
+				}
+			}
+		default:
+			assert(false, "unknown tile.tag %s at %s", tile.tag, p)
+		}
+
+		for _, np := range p.neighbors() {
+			if visited[np].tag == VT_UNVISITED {
+				visited[np] = VisitInfo{tag: VT_FRONTEIR, dist: dist + 1, locks: locks, keys: keys}
+			}
+		}
+	}
+
+	return res
+}
+
+///////////////////////////////////////////////////////////////////////////////
+//
+// Maze solving
+//
+///////////////////////////////////////////////////////////////////////////////
 
 // SolveState is a pointer-free value representing the state of an in-progress solution
 // This value must have no pointers (e.g. slices) so that it can be used as a hashmap key
@@ -406,146 +556,4 @@ func (state *SolveState) availableKeys(kd KeyDistances) (res []AvailableKey) {
 		}
 	}
 	return
-}
-
-//
-// KeyDist computation
-//
-
-// KeyDistances keeps track of distances between keys.
-type KeyDistances map[KeyID]map[KeyID]KeyDist
-
-func (kds KeyDistances) String() string {
-	var s strings.Builder
-	for kidA := KeyID(0); kidA < NKeys; kidA++ {
-		for kidB := KeyID(0); kidB < NKeys; kidB++ {
-			if kd, prs := kds[kidA][kidB]; prs {
-				fmt.Fprintf(&s, "[%s->%s]=%s, ", kidA, kidB, kd)
-			}
-		}
-	}
-	return s.String()
-}
-
-// KeyDist represents the distance between two keys,
-// along with the locks that are blocking this path
-// and the keys that are "blocking" the path
-// (storing the keys helps us reduce the branching factor of our algorithm
-// by eagerly picking up keys that are along the path)
-// !!! This assumes the maze has no cycles - the whole algorithm falls apart otherwise!!!
-type KeyDist struct {
-	dist  int
-	locks [NKeys]bool
-	keys  [NKeys]bool
-}
-
-func (kd KeyDist) String() string {
-	var s strings.Builder
-	fmt.Fprintf(&s, "%d", kd.dist)
-	if len(kd.locks) > 0 {
-		fmt.Fprintf(&s, "(")
-		for kid, val := range kd.locks {
-			if val {
-				fmt.Fprintf(&s, "%s", strings.ToUpper(KeyID(kid).String()))
-			}
-		}
-		fmt.Fprintf(&s, ")")
-	}
-	if len(kd.keys) > 0 {
-		fmt.Fprintf(&s, "(")
-		for kid, val := range kd.keys {
-			if val {
-				fmt.Fprintf(&s, "%s", KeyID(kid).String())
-			}
-		}
-		fmt.Fprintf(&s, ")")
-	}
-	return s.String()
-}
-
-// assumes the maze has no cycles - the whole algorithm falls apart otherwise
-func precomputeKeyDistances(maze *Maze) KeyDistances {
-	res := make(map[KeyID]map[KeyID]KeyDist)
-	for kid := KeyID(0); kid < NKeys; kid++ {
-		res[kid] = precomputeKeyDistancesFrom(maze, kid)
-	}
-	return res
-}
-
-type VisitType int
-
-const (
-	VT_UNVISITED VisitType = iota
-	VT_VISITED
-	VT_FRONTEIR
-)
-
-type VisitTracker map[point]VisitInfo
-
-type VisitInfo struct {
-	tag   VisitType
-	dist  int
-	locks [NKeys]bool
-	keys  [NKeys]bool
-}
-
-func makeVisitTracker() VisitTracker {
-	return make(map[point]VisitInfo)
-}
-
-func (vt VisitTracker) nextToVisit() (point, VisitInfo, bool) {
-	for p, info := range vt {
-		if info.tag == VT_FRONTEIR {
-			return p, info, true
-		}
-	}
-	return point{}, VisitInfo{}, false
-}
-
-func precomputeKeyDistancesFrom(maze *Maze, kid KeyID) map[KeyID]KeyDist {
-	res := make(map[KeyID]KeyDist)
-
-	visited := makeVisitTracker()
-	visited[maze.keyLoc(kid)] = VisitInfo{tag: VT_FRONTEIR}
-	for {
-		p, info, ok := visited.nextToVisit()
-		if !ok {
-			break
-		}
-		locks := info.locks
-		keys := info.keys
-		dist := info.dist
-
-		tile := maze.tiles[p.y][p.x]
-		visited[p] = VisitInfo{tag: VT_VISITED, dist: dist}
-		switch tile.tag {
-		case TT_EMPTY:
-			// nothing special
-		case TT_WALL:
-			continue // don't add neighbors
-		case TT_LOCK:
-			locks[tile.kid] = true
-		case TT_KEY:
-			keys[tile.kid] = true
-			if tile.kid == kid {
-				assert(dist == 0, "loop?") // note: this is not an exhaustive loop check
-			} else {
-				res[tile.kid] = KeyDist{
-					dist:  dist,
-					locks: locks,
-					keys:  keys,
-				}
-			}
-		default:
-			assert(false, "unknown tile.tag %s at %s", tile.tag, p)
-		}
-
-		for _, np := range p.neighbors() {
-			if visited[np].tag == VT_UNVISITED {
-				visited[np] = VisitInfo{tag: VT_FRONTEIR, dist: dist + 1, locks: locks, keys: keys}
-			}
-		}
-	}
-
-	return res
 }
