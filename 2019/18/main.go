@@ -18,7 +18,7 @@ var check = helpers.Check
 
 // NRobots is the number of robots in the maze
 // Also, it's the number of start tiles (@)
-const NRobots = 4
+const NRobots = 1
 
 // NKeys is the number of keys in the maze.
 // It includes NRobots pseudo-keys that makes the precomputeKeyDistances() function easier to write
@@ -85,6 +85,11 @@ var HighestKeyID KeyID
 // NextStartID is used to assign the different starts different KeyIDs
 var NextStartID = 26
 
+// unused returns true e.g. for key 'q' on mazes with only 4 keys
+func (kid KeyID) unused() bool {
+	return HighestKeyID < kid && kid < 26
+}
+
 func parseTile(b byte) Tile {
 	switch b {
 	case '.':
@@ -98,7 +103,7 @@ func parseTile(b byte) Tile {
 			return t
 		} else if 'a' <= b && b <= 'z' {
 			kid := KeyID(b - 'a')
-			if kid < 26 && kid > HighestKeyID {
+			if kid.unused() {
 				HighestKeyID = kid
 			}
 			return Tile{tag: TT_KEY, kid: kid}
@@ -312,6 +317,9 @@ func (vt VisitTracker) nextToVisit() (point, VisitInfo, bool) {
 
 func precomputeKeyDistancesFrom(maze *Maze, kid KeyID) map[KeyID]KeyDist {
 	res := make(map[KeyID]KeyDist)
+	if kid.unused() {
+		return res
+	}
 
 	visited := makeVisitTracker()
 	visited[maze.keyLoc(kid)] = VisitInfo{tag: VT_FRONTEIR}
@@ -469,11 +477,11 @@ func solve(maze *Maze) int {
 }
 
 func solveKD(keyDists KeyDistances) int {
-	// fmt.Printf("keyDists:\n%s\n", keyDists)
+	fmt.Printf("keyDists:\n%s\n", keyDists)
 
 	// stateQueue holds the queue of partial solutions
 	// that we've tried / want to try
-	// (TODO: don't store the entire queue in memory; we only pop)
+	// (TODO: release old states after processing them; don't store entire queue in memory)
 	var stateQueue []SolveStateDist
 	stateQueue = append(stateQueue, SolveStateDist{
 		state: makeSolveState(),
@@ -485,9 +493,10 @@ func solveKD(keyDists KeyDistances) int {
 
 	var skipCount int
 	for i := 0; i < len(stateQueue); i++ {
+		// pop current from stateQueue
 		current := stateQueue[i]
 		shouldPrint := i%10000 == 0
-		shouldPrint = false
+		// shouldPrint = false
 		if shouldPrint {
 			fmt.Printf("Cycle %d/%d:\n", i+1, len(stateQueue))
 			// fmt.Printf("  skipped:     %d\n", skipCount)
@@ -545,6 +554,8 @@ type AvailableKey struct {
 // note: this will often return keys we've already gotten;
 // this is useful so we can consolidate duplicate states sooner
 func (state *SolveState) availableKeys(kd KeyDistances) (res []AvailableKey) {
+	// fmt.Println("state=%s\n", state)
+	// fmt.Println("kd=%s\n", kd)
 	for rid := 0; rid < NRobots; rid++ {
 		submap := kd[state.lastKeys[rid]]
 		for kid := KeyID(0); kid < NKeys; kid++ {
