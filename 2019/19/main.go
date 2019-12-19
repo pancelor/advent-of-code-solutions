@@ -338,32 +338,31 @@ func stringSeq(s string) (res []int) {
 	return
 }
 
-var inQueue []int
-
-func promptInput() {
-	fmt.Printf("> ")
-	str := helpers.ReadLine()
-	// fmt.Println("READ:", str)
-	x, err := strconv.Atoi(str)
-	check(err)
-	inQueue = append(inQueue, x)
-}
-
 func solve(in []int) interface{} {
-	count := 0
-	for y := 0; y < 50; y++ {
-		for x := 0; x < 50; x++ {
+	Start := 10
+	Width := 10
+	Max := 1000000
+	for d := Start; d < Max; d++ {
+		fmt.Println(d)
+		streak := 0
+	INNER:
+		for i := d; i >= 0; i-- {
+			y := i
+			x := d - i
 			if getPos(in, x, y) {
-				count++
-				fmt.Print("#")
+				streak++
+				if streak == Width {
+					return point{x, y - Width}
+				}
 			} else {
-				fmt.Print(".")
+				if streak > 0 {
+					fmt.Println("nope")
+					break INNER
+				}
 			}
 		}
-		fmt.Print("\n")
 	}
-
-	return count
+	return nil
 }
 
 func getPos(in []int, x int, y int) bool {
