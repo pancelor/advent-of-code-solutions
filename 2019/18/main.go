@@ -477,7 +477,7 @@ func solve(maze *Maze) int {
 }
 
 func solveKD(keyDists KeyDistances) int {
-	fmt.Printf("keyDists:\n%s\n", keyDists)
+	// fmt.Printf("keyDists:\n%s\n", keyDists)
 
 	// stateQueue holds the queue of partial solutions
 	// that we've tried / want to try
@@ -496,7 +496,7 @@ func solveKD(keyDists KeyDistances) int {
 		// pop current from stateQueue
 		current := stateQueue[i]
 		shouldPrint := i%10000 == 0
-		// shouldPrint = false
+		shouldPrint = false
 		if shouldPrint {
 			fmt.Printf("Cycle %d/%d:\n", i+1, len(stateQueue))
 			// fmt.Printf("  skipped:     %d\n", skipCount)
@@ -552,14 +552,16 @@ type AvailableKey struct {
 }
 
 // availableKeys returns keys that are available to be gotten
-// note: this will often return keys we've already gotten;
-// this is useful so we can consolidate duplicate states sooner
+// (and are not already gotten)
 func (state *SolveState) availableKeys(kd KeyDistances) (res []AvailableKey) {
 	// fmt.Println("state=%s\n", state)
 	// fmt.Println("kd=%s\n", kd)
 	for rid := 0; rid < NRobots; rid++ {
 		submap := kd[state.lastKeys[rid]]
 		for kid := KeyID(0); kid < NKeys; kid++ {
+			if state.keys[kid] {
+				continue
+			}
 			kdist, prs := submap[kid]
 			// fmt.Printf("  KeyDist(%s)=%s\n", kid, kdist)
 			if prs && state.hasAllKeys(kdist.locks) {
