@@ -528,6 +528,7 @@ func solveKD(keyDists KeyDistances) int {
 			stateQueue = append(stateQueue, new)
 		}
 	}
+	fmt.Printf("Explored %d SolveStates\n", len(stateQueue))
 
 	best := 1000000
 	for state, dist := range bestDists {
