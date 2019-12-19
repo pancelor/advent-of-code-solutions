@@ -12,6 +12,14 @@ var check = helpers.Check
 
 var HighestKeyID KeyID
 
+// NRobots is the number of robots in the maze
+// Also, it's the number of start tiles (@)
+const NRobots = 4
+
+// NKeys is the number of keys in the maze.
+// It includes NRobots pseudo-keys that makes the precomputeKeyDistances() function easier to write
+const NKeys = 26 + NRobots
+
 type TileType int
 
 const (
@@ -99,7 +107,7 @@ func (p point) neighbors() (res []point) {
 type Maze struct {
 	tiles   [][]Tile
 	keyLocs map[KeyID]point // a cache
-	starts  [4]point
+	starts  [NRobots]point
 }
 
 func makeMaze() *Maze {
@@ -120,12 +128,12 @@ func (maze Maze) String() string {
 }
 
 type SolveState struct {
-	keys     [30]bool // one per alphabet letter + four starts
-	lastKeys [4]KeyID // lastKey for each of the four robots
+	keys     [NKeys]bool    // one per alphabet letter + four starts
+	lastKeys [NRobots]KeyID // lastKey for each of the four robots
 }
 
 // rid is which robot collected the key
-func (state SolveState) collect(rid int, lastKey KeyID, otherNewKeys [30]bool) SolveState {
+func (state SolveState) collect(rid int, lastKey KeyID, otherNewKeys [NKeys]bool) SolveState {
 	// since this isn't a pointer method, state is already a copy we can edit at will
 	for kid, val := range otherNewKeys {
 		// if val && kid != lastKey && !newState.keys[kid] {
@@ -144,9 +152,9 @@ func (state SolveState) collect(rid int, lastKey KeyID, otherNewKeys [30]bool) S
 
 func makeSolveState() SolveState {
 	state := SolveState{}
-	for rid := 0; rid < 4; rid++ {
+	for rid := 0; rid < NRobots; rid++ {
 		// rid: robot id
-		state = state.collect(rid, KeyID(26+rid), [30]bool{}) // collect psuedo-keys at starting locations
+		state = state.collect(rid, KeyID(26+rid), [NKeys]bool{}) // collect psuedo-keys at starting locations
 	}
 	return state
 }
@@ -193,8 +201,8 @@ func solve(maze *Maze) interface{} {
 	var skipCount int
 	for i := 0; i < len(stateQueue); i++ {
 		current := stateQueue[i]
-		shouldPrint := i%100000 == 0
-		shouldPrint = false
+		shouldPrint := i%10000 == 0
+		// shouldPrint = false
 		if shouldPrint {
 			fmt.Printf("Cycle %d/%d:\n", i+1, len(stateQueue))
 			// fmt.Printf("  skipped:     %d\n", skipCount)
@@ -249,9 +257,9 @@ type KeyTemp struct {
 // availableKeys returns keys that are available to be gotten
 // note: this will often return keys we've already gotten (useful as checkpoints)
 func (kd KeyDistances) availableKeys(state *SolveState) (res []KeyTemp) {
-	for rid := 0; rid < 4; rid++ {
+	for rid := 0; rid < NRobots; rid++ {
 		submap := kd[state.lastKeys[rid]]
-		for kid := KeyID(0); kid < 30; kid++ {
+		for kid := KeyID(0); kid < NKeys; kid++ {
 			kdist, prs := submap[kid]
 			// fmt.Printf("  KeyDist(%s)=%s\n", kid, kdist)
 			if prs && state.hasAllKeys(kdist.locks) {
@@ -274,7 +282,7 @@ func (state *SolveState) done() bool {
 	return true
 }
 
-func (state *SolveState) hasAllKeys(kids [30]bool) bool {
+func (state *SolveState) hasAllKeys(kids [NKeys]bool) bool {
 	// unset keys we have
 	for kid, haveKey := range state.keys {
 		if haveKey {
@@ -314,8 +322,8 @@ type KeyDistances map[KeyID]map[KeyID]KeyDist
 
 func (kds KeyDistances) String() string {
 	var s strings.Builder
-	for kidA := KeyID(0); kidA < 30; kidA++ {
-		for kidB := KeyID(0); kidB < 30; kidB++ {
+	for kidA := KeyID(0); kidA < NKeys; kidA++ {
+		for kidB := KeyID(0); kidB < NKeys; kidB++ {
 			if kd, prs := kds[kidA][kidB]; prs {
 				fmt.Fprintf(&s, "[%s->%s]=%s, ", kidA, kidB, kd)
 			}
@@ -326,8 +334,8 @@ func (kds KeyDistances) String() string {
 
 type KeyDist struct {
 	dist  int
-	locks [30]bool
-	keys  [30]bool
+	locks [NKeys]bool
+	keys  [NKeys]bool
 }
 
 func (kd KeyDist) String() string {
@@ -357,7 +365,7 @@ func (kd KeyDist) String() string {
 // assumes the maze has no cycles - whole algorithm falls apart otherwise
 func precomputeKeyDistances(maze *Maze) KeyDistances {
 	res := make(map[KeyID]map[KeyID]KeyDist)
-	for kid := KeyID(0); kid < 30; kid++ {
+	for kid := KeyID(0); kid < NKeys; kid++ {
 		res[kid] = precomputeKeyDistancesFrom(maze, kid)
 	}
 	return res
@@ -376,8 +384,8 @@ type VisitTracker map[point]VisitInfo
 type VisitInfo struct {
 	tag   VisitType
 	dist  int
-	locks [30]bool
-	keys  [30]bool
+	locks [NKeys]bool
+	keys  [NKeys]bool
 }
 
 func makeVisitTracker() VisitTracker {
@@ -454,6 +462,7 @@ func getInput() (*Maze, error) {
 		return nil, err
 	}
 
+	var numStartsSeen int
 	maze := makeMaze()
 	for r, l := range lines {
 		if l == "" {
@@ -465,7 +474,9 @@ func getInput() (*Maze, error) {
 			row = append(row, tile)
 			p := point{x: c, y: r}
 			if b == '@' {
-				maze.starts[NextStartID-26-1] = p
+				assert(numStartsSeen < NRobots, "maze has %d starts (so far) but code only works on %d starts", numStartsSeen, NRobots)
+				maze.starts[numStartsSeen] = p
+				numStartsSeen++
 			}
 			if tile.tag == TT_KEY {
 				maze.keyLocs[tile.kid] = p
@@ -478,6 +489,6 @@ func getInput() (*Maze, error) {
 		maze.tiles = append(maze.tiles, row)
 	}
 
-	// fmt.Println(maze.starts)
+	assert(NRobots == numStartsSeen, "maze has %d starts but code only works on %d starts", numStartsSeen, NRobots)
 	return maze, nil
 }
