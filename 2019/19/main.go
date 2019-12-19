@@ -338,10 +338,30 @@ func stringSeq(s string) (res []int) {
 	return
 }
 
+func test(in []int) {
+	sol := point{837, 1082}
+	xSol := sol.x
+	ySol := sol.y
+
+	for y := ySol - 1; y < ySol+105; y++ {
+		for x := xSol - 1; x < xSol+105; x++ {
+			if getPos(in, x, y) {
+				fmt.Print("#")
+			} else {
+				fmt.Print(".")
+			}
+		}
+		fmt.Print("\n")
+	}
+}
+
 func solve(in []int) interface{} {
-	Start := 10
-	Width := 10
-	Max := 1000000
+	// test(in)
+	// return 0
+
+	Width := 100
+	Start := 2017
+	Max := 10000000
 	for d := Start; d < Max; d++ {
 		fmt.Println(d)
 		streak := 0
@@ -352,7 +372,7 @@ func solve(in []int) interface{} {
 			if getPos(in, x, y) {
 				streak++
 				if streak == Width {
-					return point{x, y - Width}
+					return (x-Width)*10000 + y
 				}
 			} else {
 				if streak > 0 {
