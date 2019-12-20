@@ -16,13 +16,8 @@ var check = helpers.Check
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-// NRobots is the number of robots in the maze
-// Also, it's the number of start tiles (@)
-const NRobots = 1
-
-// NKeys is the number of keys in the maze.
-// It includes NRobots pseudo-keys that makes the precomputeKeyDistances() function easier to write
-const NKeys = 26 + NRobots
+// NTunnels is the number of tunnels in the maze.
+const NTunnels = 56
 
 func main() {
 	fmt.Printf("answer:\n%v\n", solve(getInput()))
@@ -32,28 +27,30 @@ func getInput() *Maze {
 	lines, err := helpers.GetLines()
 	check(err)
 
-	var numStartsSeen int
+	l, lines = lines[0], lines[1:]
+	labels := strings.Split(l, " ")
+	nextLabel := 0
+
 	var maze Maze
 	for r, l := range lines {
 		if l == "" {
 			continue
 		}
+		edgeV := r == 0 || r == 110
 		var row []Tile
 		for c, b := range []byte(l) {
+			edgeH := c == 0 || r == 108
 			tile := parseTile(b)
-			row = append(row, tile)
-			p := point{x: c, y: r}
-			if b == '@' {
-				assert(numStartsSeen < NRobots, "maze has %d starts (so far) but code only works on %d starts", numStartsSeen, NRobots)
-				maze.starts[numStartsSeen] = p
-				numStartsSeen++
+			if (edgeH || edgeV) && tile.tag == TT_EMPTY {
+				tile = Tile{tag: TT_TUNNEL, labels[nextLabel]}
+				nextLabel++
 			}
+			row = append(row, tile)
 		}
 
 		maze.tiles = append(maze.tiles, row)
 	}
 
-	assert(NRobots == numStartsSeen, "maze has %d starts but code only works on %d starts", numStartsSeen, NRobots)
 	return &maze
 }
 
@@ -63,31 +60,21 @@ func getInput() *Maze {
 //
 ///////////////////////////////////////////////////////////////////////////////
 
+// TileType .
 type TileType int
 
 const (
 	TT_UNKNOWN TileType = iota
 	TT_EMPTY
 	TT_WALL
-	TT_KEY
-	TT_LOCK
+	TT_TUNNEL
+	TT_OOB
 )
 
+// Tile .
 type Tile struct {
 	tag TileType
-	kid KeyID // optional; exists iff tag == TT_KEY or TT_LOCK
-}
-
-// HighestKeyID is the highest non-pseudo key yet assigned.
-// It's used to determine when a SolveState is .done()
-var HighestKeyID KeyID
-
-// NextStartID is used to assign the different starts different KeyIDs
-var NextStartID = 26
-
-// unused returns true e.g. for key 'q' on mazes with only 4 keys
-func (kid KeyID) unused() bool {
-	return HighestKeyID < kid && kid < 26
+	tid KeyID // optional; exists iff tag == TT_TUNNEL
 }
 
 func parseTile(b byte) Tile {
@@ -96,21 +83,11 @@ func parseTile(b byte) Tile {
 		return Tile{tag: TT_EMPTY}
 	case '#':
 		return Tile{tag: TT_WALL}
+	case ' ':
+		return Tile{tag: TT_OOB}
 	default:
-		if b == '@' {
-			t := Tile{tag: TT_KEY, kid: KeyID(NextStartID)} // special artificial key to make KeyDistances work
-			NextStartID++
-			return t
-		} else if 'a' <= b && b <= 'z' {
-			kid := KeyID(b - 'a')
-			if kid.unused() {
-				HighestKeyID = kid
-			}
-			return Tile{tag: TT_KEY, kid: kid}
-		} else {
-			assert('A' <= b && b <= 'Z', "unknown char %s", b)
-			return Tile{tag: TT_LOCK, kid: KeyID(b - 'A')}
-		}
+		assert(false, "bad tile %s", b)
+		return Tile{}
 	}
 }
 
@@ -120,10 +97,10 @@ func (t Tile) String() string {
 		return "."
 	case TT_WALL:
 		return "#"
-	case TT_KEY:
-		return t.kid.String()
-	case TT_LOCK:
-		return strings.ToUpper(t.kid.String())
+	case TT_OOB:
+		return " "
+	case TT_TUNNEL:
+		return t.tid.String()
 	default:
 		return "?"
 	}
@@ -161,10 +138,10 @@ func (p point) neighbors() (res []point) {
 	return
 }
 
-// KeyID is 0-25 for an alphabetic key, or 26-29 for the start pseudo-keys
-type KeyID int
+// TunnelID .
+type TunnelID int
 
-func (kid KeyID) String() string {
+func (tid TunnelID) String() string {
 	switch kid {
 	case 26:
 		return "@"
@@ -182,8 +159,7 @@ func (kid KeyID) String() string {
 // Maze represents the static, physical structure of the maze.
 // No dynamic solution state is included in this type
 type Maze struct {
-	tiles  [][]Tile
-	starts [NRobots]point // start locations for the robots
+	tiles [][]Tile
 }
 
 func (maze Maze) String() string {
@@ -197,17 +173,18 @@ func (maze Maze) String() string {
 	return s.String()
 }
 
-// keyAt returns the KeyID of the key at the given position,
+// tunnelAt returns the KeyID of the key at the given position,
 // or panics if no such key exists
-func (maze *Maze) keyAt(p point) KeyID {
+func (maze *Maze) tunnelAt(p point) TunnelID {
 	tile := maze.tiles[p.y][p.x]
-	assert(tile.tag == TT_KEY, "tile at %s isn't a key; it's %v", p, tile)
+	assert(tile.tag == TT_TUNNEL, "tile at %s isn't a tunnel; it's %v", p, tile)
 	return tile.kid
 }
 
-// keyLoc returns the location of the given KeyID,
-// or panics if no such key exists
-func (maze *Maze) keyLoc(kid KeyID) point {
+// TODO return both?
+// tLoc returns the locations of the given TunnelID,
+// or panics if no such tunnel exists
+func (maze *Maze) tLoc(tid TunnelID) point {
 	for r, row := range maze.tiles {
 		for c, tile := range row {
 			if tile.tag == TT_KEY && tile.kid == kid {
@@ -215,7 +192,7 @@ func (maze *Maze) keyLoc(kid KeyID) point {
 			}
 		}
 	}
-	assert(false, "KeyID %s is noplace", kid)
+	assert(false, "TunnelID %s is noplace", kid)
 	return point{}
 }
 
