@@ -22,6 +22,9 @@ func main() {
 
 var tunnelNames []string
 
+// tunnelDirs[i] is true if tunnel i goes deeper
+var tunnelDeepens []bool
+
 func getInput() *Maze {
 	lines, err := helpers.GetLines()
 	check(err)
@@ -63,8 +66,9 @@ const (
 
 // Tile .
 type Tile struct {
-	tag TileType
-	tid TunnelID // optional; exists iff tag == TT_TUNNEL
+	tag    TileType
+	tid    TunnelID // optional; exists iff tag == TT_TUNNEL
+	deeper bool
 }
 
 // numTunnels is the number of tunnels in the maze.
@@ -78,8 +82,13 @@ func parseTile(b byte) Tile {
 		return Tile{tag: TT_WALL}
 	case ' ':
 		return Tile{tag: TT_OOB}
-	case 'x':
-		tile := Tile{tag: TT_TUNNEL, tid: numTunnels}
+	case 'x', 'X':
+		deeper := (b == 'X')
+		tile := Tile{tag: TT_TUNNEL, tid: numTunnels, deeper: deeper}
+		if !deeper {
+			tunnelNames[numTunnels] = strings.ToLower(tunnelNames[numTunnels])
+		}
+		tunnelDeepens = append(tunnelDeepens, deeper)
 		numTunnels++
 		return tile
 	default:
@@ -174,16 +183,18 @@ func (maze *Maze) tunnelAt(p point) TunnelID {
 
 // getTid turns a name into a tid
 func getTid(name string, n int) TunnelID {
+	found := 0
 	assert(n == 1 || n == 2, "bad n")
 	for i, v := range tunnelNames {
-		if v == name {
-			n--
+		// println(name, i, v, strings.ToUpper(v) == strings.ToUpper(name))
+		if strings.ToUpper(v) == strings.ToUpper(name) {
+			found++
 		}
-		if n == 0 {
+		if found == n {
 			return TunnelID(i)
 		}
 	}
-	assert(false, "no tunnel found with name %s", name)
+	assert(false, "no tunnel %d found with name %s", n, name)
 	return TunnelID(0)
 }
 
@@ -213,31 +224,51 @@ type TunnelDistances map[TunnelID]map[TunnelID]int
 func (tds TunnelDistances) String() string {
 	var s strings.Builder
 	for tidA := TunnelID(0); tidA < numTunnels; tidA++ {
+		fmt.Fprintf(&s, "%s(%d)->\n", tidA, tidA)
 		for tidB := TunnelID(0); tidB < numTunnels; tidB++ {
 			if dist, prs := tds[tidA][tidB]; prs {
-				fmt.Fprintf(&s, "(%s(%d)->%s(%d):%d), ", tidA, tidA, tidB, tidB, dist)
+				fmt.Fprintf(&s, "  ->%s(%d): %d\n", tidB, tidB, dist)
 			}
 		}
 	}
 	return s.String()
 }
 
-// assumes the maze has no cycles - the whole algorithm falls apart otherwise
-func (maze *Maze) precomputeTunnelDistances() TunnelDistances {
-	res := make(map[TunnelID]map[TunnelID]int)
+// func (tds TunnelDistances) String() string {
+// 	var s strings.Builder
+// 	for tidA := TunnelID(0); tidA < numTunnels; tidA++ {
+// 		for tidB := TunnelID(0); tidB < numTunnels; tidB++ {
+// 			if dist, prs := tds[tidA][tidB]; prs {
+// 				fmt.Fprintf(&s, "(%s(%d)->%s(%d):%d), ", tidA, tidA, tidB, tidB, dist)
+// 			}
+// 		}
+// 	}
+// 	return s.String()
+// }
+
+func precomputePairs() map[TunnelID]TunnelID {
+	res := make(map[TunnelID]TunnelID)
 	for tid := TunnelID(0); tid < numTunnels; tid++ {
-		fmt.Printf("Precalculating tid %d\n", tid)
-		res[tid] = maze.precomputeTunnelDistancesFrom(tid)
 		pID, ok := tid.pairID()
 		if ok {
-			res[tid][pID] = 1
+			res[tid] = pID
 		}
 	}
 	return res
 }
 
+// assumes the maze has no cycles - the whole algorithm falls apart otherwise
+func (maze *Maze) precomputeTunnelDistances() TunnelDistances {
+	res := make(map[TunnelID]map[TunnelID]int)
+	for tid := TunnelID(0); tid < numTunnels; tid++ {
+		// fmt.Printf("Precalculating tid %d\n", tid)
+		res[tid] = maze.precomputeTunnelDistancesFrom(tid)
+	}
+	return res
+}
+
 func (tid TunnelID) pairID() (TunnelID, bool) {
-	s := tid.String()
+	s := strings.ToUpper(tid.String())
 	if s == "AA" || s == "ZZ" {
 		return TunnelID(0), false
 	}
@@ -375,20 +406,46 @@ func (tds TunnelDistances) update(updates []TTD) TunnelDistances {
 
 func (tds TunnelDistances) solve() int {
 	fmt.Printf("tds:\n%s\n", tds)
+	pairs := precomputePairs()
+	// fmt.Printf("pairs:\n%s\n", pairs)
+	// return 0
+
+	// this is maybe buggy, maybe not
+	// BUT there's an issue where a connection might be fastest by temporarily
+	// going OUT and arbitrary number of times... but that's not always possible in
+	// the final solution
 	tidAA := getTid("AA", 1)
 	tidZZ := getTid("ZZ", 1)
 	for {
 		var updates []TTD
 		for t1, submap := range tds {
+			fmt.Printf("\nt1=%s(%d)\n", t1, t1)
 			for t2, d12 := range submap {
-				for t3, d23 := range tds[t2] {
+				fmt.Printf("t2=%s(%d)\n", t2, t2)
+				if !tunnelDeepens[t2] {
+					continue
+				}
+				t2p, prs := pairs[t2]
+				if !prs {
+					continue
+				}
+				fmt.Printf("t2p=%s(%d)\n", t2p, t2p)
+				for t3p, d23 := range tds[t2p] {
+					fmt.Printf("t3p=%s(%d)\n", t3p, t3p)
+					if tunnelDeepens[t3p] {
+						continue
+					}
+					t3, prs := pairs[t3p]
+					if !prs {
+						continue
+					}
+					fmt.Printf("t3=%s(%d)\n", t3, t3)
+
 					if t1 == t3 {
 						continue
 					}
-					dist := d12 + d23
-					if t1 == tidAA {
-						fmt.Println(t1, t2, t3, dist, "<?", tds[t1][t3])
-					}
+					dist := d12 + 1 + d23 + 1
+					fmt.Printf("%s(%d)->%s(%d)->%s(%d): %d (old: %d)\n", t1, t1, t2, t2, t3, t3, dist, tds[t1][t3])
 					if oldDist, prs := tds[t1][t3]; !prs || dist < oldDist {
 						updates = append(updates, TTD{t1, t3, dist})
 					}
@@ -399,6 +456,7 @@ func (tds TunnelDistances) solve() int {
 			break
 		}
 		tds = tds.update(updates)
+		break // TEMP
 	}
 
 	return tds[tidAA][tidZZ]
