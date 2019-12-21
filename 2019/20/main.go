@@ -231,8 +231,29 @@ func (maze *Maze) precomputeTunnelDistances() TunnelDistances {
 	for tid := TunnelID(0); tid < NTunnels; tid++ {
 		fmt.Printf("Precalculating tid %d\n", tid)
 		res[tid] = maze.precomputeTunnelDistancesFrom(tid)
+		pID, ok := tid.pairID()
+		if ok {
+			res[tid][pID] = 1
+		}
 	}
 	return res
+}
+
+func (tid TunnelID) pairID() (TunnelID, bool) {
+	s := tid.String()
+	if s == "AA" || s == "ZZ" {
+		return TunnelID(0), false
+	}
+	t1 := getTid(s, 1)
+	t2 := getTid(s, 2)
+	if tid == t1 {
+		return t2, true
+	} else if tid == t2 {
+		return t1, true
+	} else {
+		assert(false, "no pair")
+		return TunnelID(0), false
+	}
 }
 
 type VisitType int
@@ -342,16 +363,15 @@ type TTD struct {
 	dist int
 }
 
-func (tds TunnelDistances) update(ttds []TTD) TunnelDistances {
-	for _, ttd := range ttds {
+func (tds TunnelDistances) update(updates []TTD) TunnelDistances {
+	for _, ttd := range updates {
 		t1 := ttd.t1
 		t2 := ttd.t2
 		dist := ttd.dist
+		// fmt.Println("update", t1, t2, dist)
 		assert(tds[t1][t2] == tds[t2][t1], "tds is asymmetric")
-		if oldDist, prs := tds[t1][t2]; !prs || dist < oldDist {
-			tds[t1][t2] = dist
-			tds[t2][t1] = dist
-		}
+		tds[t1][t2] = dist
+		tds[t2][t1] = dist
 	}
 	return tds
 }
@@ -361,11 +381,22 @@ func (tds TunnelDistances) solve() int {
 	tidAA := getTid("AA", 1)
 	tidZZ := getTid("ZZ", 1)
 	for {
-		updates := make([]TTD)
-		distsToAA := tds[tidAA] // tds is symmetric, so distsToAA[x] is the dist from x to AA
-		for tid, dist := range distsToAA {
-			fmt.Println(tid, dist)
-			// TODO
+		var updates []TTD
+		for t1, submap := range tds {
+			for t2, d12 := range submap {
+				for t3, d23 := range tds[t2] {
+					if t1 == t3 {
+						continue
+					}
+					dist := d12 + d23 + 1
+					if t1 == tidAA {
+						fmt.Println(t1, t2, t3, dist, "<?", tds[t1][t3])
+					}
+					if oldDist, prs := tds[t1][t3]; !prs || dist < oldDist {
+						updates = append(updates, TTD{t1, t3, dist})
+					}
+				}
+			}
 		}
 		if len(updates) == 0 {
 			break
