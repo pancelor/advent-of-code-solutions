@@ -16,9 +16,6 @@ var check = helpers.Check
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-// NTunnels is the number of tunnels in the maze.
-const NTunnels = 56
-
 func main() {
 	fmt.Printf("answer:\n%v\n", solve(getInput()))
 }
@@ -44,7 +41,6 @@ func getInput() *Maze {
 		maze.tiles = append(maze.tiles, row)
 	}
 
-	assert(nextTunnelID == NTunnels, "didn't use all tunnels")
 	return &maze
 }
 
@@ -71,7 +67,8 @@ type Tile struct {
 	tid TunnelID // optional; exists iff tag == TT_TUNNEL
 }
 
-var nextTunnelID = TunnelID(0)
+// numTunnels is the number of tunnels in the maze.
+var numTunnels = TunnelID(0)
 
 func parseTile(b byte) Tile {
 	switch b {
@@ -82,8 +79,8 @@ func parseTile(b byte) Tile {
 	case ' ':
 		return Tile{tag: TT_OOB}
 	case 'x':
-		tile := Tile{tag: TT_TUNNEL, tid: nextTunnelID}
-		nextTunnelID++
+		tile := Tile{tag: TT_TUNNEL, tid: numTunnels}
+		numTunnels++
 		return tile
 	default:
 		assert(false, "bad tile %s", b)
@@ -215,8 +212,8 @@ type TunnelDistances map[TunnelID]map[TunnelID]int
 
 func (tds TunnelDistances) String() string {
 	var s strings.Builder
-	for tidA := TunnelID(0); tidA < NTunnels; tidA++ {
-		for tidB := TunnelID(0); tidB < NTunnels; tidB++ {
+	for tidA := TunnelID(0); tidA < numTunnels; tidA++ {
+		for tidB := TunnelID(0); tidB < numTunnels; tidB++ {
 			if dist, prs := tds[tidA][tidB]; prs {
 				fmt.Fprintf(&s, "(%s(%d)->%s(%d):%d), ", tidA, tidA, tidB, tidB, dist)
 			}
@@ -228,7 +225,7 @@ func (tds TunnelDistances) String() string {
 // assumes the maze has no cycles - the whole algorithm falls apart otherwise
 func (maze *Maze) precomputeTunnelDistances() TunnelDistances {
 	res := make(map[TunnelID]map[TunnelID]int)
-	for tid := TunnelID(0); tid < NTunnels; tid++ {
+	for tid := TunnelID(0); tid < numTunnels; tid++ {
 		fmt.Printf("Precalculating tid %d\n", tid)
 		res[tid] = maze.precomputeTunnelDistancesFrom(tid)
 		pID, ok := tid.pairID()
@@ -388,7 +385,7 @@ func (tds TunnelDistances) solve() int {
 					if t1 == t3 {
 						continue
 					}
-					dist := d12 + d23 + 1
+					dist := d12 + d23
 					if t1 == tidAA {
 						fmt.Println(t1, t2, t3, dist, "<?", tds[t1][t3])
 					}
