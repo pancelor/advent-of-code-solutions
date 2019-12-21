@@ -38,6 +38,7 @@ func GetLines() ([]string, error) {
 }
 
 // ReadLine returns one line of stdin
+// note: this is sorta fucky with piped input; just use a scanner directly
 func ReadLine() string {
 	scanner := bufio.NewScanner(os.Stdin)
 	if scanner.Scan() {

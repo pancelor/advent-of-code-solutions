@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
+	"os"
 
 	"github.com/pancelor/advent-of-code-solutions/2019/computer"
 	"github.com/pancelor/advent-of-code-solutions/2019/helpers"
@@ -10,55 +12,24 @@ import (
 var assert = helpers.Assert
 var check = helpers.Check
 
-// part 1:
-// OR A T
-// AND B T
-// AND C T
-// NOT T T
-// AND D T
-// OR T J
-// WALK
-
-// part 2:
-// OR A T
-// AND B T
-// AND C T
-// NOT T T
-// AND D T
-// OR T J
-// NOT T T
-// OR E T
-// OR H T
-// AND T J
-// RUN
-
-var inQueue []byte
-
-func promptInput() {
-	fmt.Printf("> ")
-	str := helpers.ReadLine() + "\n"
-	// fmt.Println("READ:", str)
-	inQueue = []byte(str)
-}
-
 func solve(in []int) interface{} {
-	cpu := computer.MakeCPU("sal")
+	assert(len(in) > 0, "you forgot to paste in the input")
+	cpu := computer.MakeCPU("ed")
 	cpu.SetMemory(in)
 	// fmt.Println(cpu.PrintProgram())
 	cpu.Run()
 
+	scanner := bufio.NewScanner(os.Stdin)
 	var lastOut int
 	for {
 		state := <-cpu.StateChan
 		switch state {
 		case computer.CS_WAITING_INPUT:
-			if len(inQueue) == 0 {
-				promptInput()
-			}
-			var b byte
-			b, inQueue = inQueue[0], inQueue[1:]
-			// fmt.Printf("sending %q\n", b)
-			cpu.InChan <- int(b)
+			fmt.Printf("> ")
+			assert(scanner.Scan(), "couldn't scan")
+			str := scanner.Text() + "\n"
+			// fmt.Printf("sending %q\n", str)
+			cpu.SendAsciiInput(str)
 		case computer.CS_WAITING_OUTPUT:
 			out := <-cpu.OutChan
 			lastOut = out

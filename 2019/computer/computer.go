@@ -234,6 +234,19 @@ func (cpu *CPU) SendInput(x int) {
 	cpu.InChan <- x
 }
 
+// SendAsciiInput sends the given string as ascii input
+// Assumes that you've already consumed the leading <-cpu.StateChan,
+//   but takes care of the rest for you
+func (cpu *CPU) SendAsciiInput(x string) {
+	for i, b := range []byte(x) {
+		if i == 0 {
+			cpu.InChan <- int(b)
+		} else {
+			cpu.SendInput(int(b))
+		}
+	}
+}
+
 // RecvOutput receives the output iff the computer's StateChan indicates
 // it's ready for it. otherwise, it panics
 func (cpu *CPU) RecvOutput() int {
@@ -272,7 +285,7 @@ func (cpu *CPU) Run() {
 				a := cpu.NextParameter()
 				cpu.StateChan <- CS_WAITING_INPUT
 				i := <-cpu.InChan
-				// fmt.Printf("%s < %d\n", cpu.Name, i)
+				// fmt.Printf("%s < %d (%s)\n", cpu.Name, i, []byte{byte(i)})
 				a.Set(i)
 			case 4: // output
 				// fmt.Println(" output")
