@@ -249,10 +249,6 @@ func (tds TunnelDistances) String() string {
 func precomputePairs() map[TunnelID]TunnelID {
 	res := make(map[TunnelID]TunnelID)
 	for tid := TunnelID(0); tid < numTunnels; tid++ {
-		pID, ok := tid.pairID()
-		if ok {
-			res[tid] = pID
-		}
 	}
 	return res
 }
@@ -263,6 +259,10 @@ func (maze *Maze) precomputeTunnelDistances() TunnelDistances {
 	for tid := TunnelID(0); tid < numTunnels; tid++ {
 		// fmt.Printf("Precalculating tid %d\n", tid)
 		res[tid] = maze.precomputeTunnelDistancesFrom(tid)
+		pID, ok := tid.pairID()
+		if ok {
+			res[tid][pID] = 1
+		}
 	}
 	return res
 }
@@ -406,46 +406,22 @@ func (tds TunnelDistances) update(updates []TTD) TunnelDistances {
 
 func (tds TunnelDistances) solve() int {
 	fmt.Printf("tds:\n%s\n", tds)
-	pairs := precomputePairs()
-	// fmt.Printf("pairs:\n%s\n", pairs)
-	// return 0
+	return 0
 
-	// this is maybe buggy, maybe not
-	// BUT there's an issue where a connection might be fastest by temporarily
-	// going OUT and arbitrary number of times... but that's not always possible in
-	// the final solution
 	tidAA := getTid("AA", 1)
 	tidZZ := getTid("ZZ", 1)
 	for {
 		var updates []TTD
 		for t1, submap := range tds {
-			fmt.Printf("\nt1=%s(%d)\n", t1, t1)
 			for t2, d12 := range submap {
-				fmt.Printf("t2=%s(%d)\n", t2, t2)
-				if !tunnelDeepens[t2] {
-					continue
-				}
-				t2p, prs := pairs[t2]
-				if !prs {
-					continue
-				}
-				fmt.Printf("t2p=%s(%d)\n", t2p, t2p)
-				for t3p, d23 := range tds[t2p] {
-					fmt.Printf("t3p=%s(%d)\n", t3p, t3p)
-					if tunnelDeepens[t3p] {
-						continue
-					}
-					t3, prs := pairs[t3p]
-					if !prs {
-						continue
-					}
-					fmt.Printf("t3=%s(%d)\n", t3, t3)
-
+				for t3, d23 := range tds[t2] {
 					if t1 == t3 {
 						continue
 					}
-					dist := d12 + 1 + d23 + 1
-					fmt.Printf("%s(%d)->%s(%d)->%s(%d): %d (old: %d)\n", t1, t1, t2, t2, t3, t3, dist, tds[t1][t3])
+					dist := d12 + d23
+					if t1 == tidAA {
+						// fmt.Println(t1, t2, t3, dist, "<?", tds[t1][t3])
+					}
 					if oldDist, prs := tds[t1][t3]; !prs || dist < oldDist {
 						updates = append(updates, TTD{t1, t3, dist})
 					}
@@ -456,9 +432,9 @@ func (tds TunnelDistances) solve() int {
 			break
 		}
 		tds = tds.update(updates)
-		break // TEMP
 	}
 
+	// fmt.Println(tds)
 	return tds[tidAA][tidZZ]
 }
 
