@@ -21,13 +21,23 @@ def p2(nums,goal):
 			p,v=x
 			return p,v,n
 
+def p2fast(nums,goal):
+	s=set(nums)
+	for a,b in itt.combinations(nums,2):
+		c=goal-a-b
+		if c in s:
+			return a,b,c
+
 nums=map(int,sys.stdin)
 
 # p,v=p1(nums,2020)
 # print "part 1:",p,v
 # print p*v
 
-p,v,n=p2(nums,2020)
-print "part 2:",p,v,n
-print p*v*n
+# p,v,n=p2(nums,2020)
+# print "part 2 (optimized):",p,v,n
+# print p*v*n
 
+p,v,n=p2fast(nums,2020)
+print "part 2 (fast):",p,v,n
+print p*v*n
