@@ -10,7 +10,6 @@ from pprint import pprint as pp
 import re
 
 def walk(cmds):
-	acc=0
 	facing=1
 	x=0
 	y=0
