@@ -10,6 +10,19 @@ import sys
 from pprint import pprint as pp
 import re
 
+def getline():
+	line=raw_input()
+	m=re.match(r"^(\d+)$",line)
+	assert(m)
+	a=m.groups()
+	return
+
+def nonedict(d):
+	res=defaultdict(lambda: None)
+	for k,v in d.items():
+		res[k]=v
+	return res
+
 def clamp(x,a,b):
 	return max(a,min(x,b))
 
