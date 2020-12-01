@@ -67,11 +67,61 @@ def decomp(line):
 			assert(0)
 	return ''.join(resbuf)
 
+def decomp_nextn(src,n):
+	# reads the next n bytes of src, and returns the number of bytes it would
+	# take up when decompressed
+
+	# read chars
+	# if (len x factor) found
+	# recurse
+	# skip 0 chars (recursing should have handled it properly)
+
+	state=0
+	length=0
+	factor=0
+	res=0
+	n0=n
+	while n>0:
+		ch=next(src)
+		assert(ch)
+		# print "ch={},n={}/{}".format(ch,n,n0)
+		if state==0:
+			# 0 normal reading
+			n-=1
+			if ch=='(':
+				state=1
+				length=0
+				factor=0
+			else:
+				res+=1
+		elif state==1:
+			# 1 reading RLE num 1 (len)
+			n-=1
+			if ch=='x':
+				state=2
+			else:
+				length*=10
+				length+=int(ch)
+		elif state==2:
+			# 2 reading RLE num 2 (num repeats)
+			n-=1
+			if ch==')':
+				# read RLE body
+				res+=decomp_nextn(src,length)*factor
+				n-=length
+				state=0
+			else:
+				factor*=10
+				factor+=int(ch)
+		else:
+			assert(0)
+	# print
+	return res
+
+
 # for line in sys.stdin:
-# 	print decomp(line.strip())
+# 	line=line.strip()
+# 	print decomp_nextn(iter(line),len(line))
 
-arg=sys.stdin.read().strip()
-print len(arg)
-arg=decomp(arg)
-print len(arg)
-
+line=sys.stdin.read().strip()
+print decomp_nextn(iter(line),len(line))
