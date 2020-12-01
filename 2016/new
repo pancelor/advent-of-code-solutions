@@ -6,7 +6,7 @@ DAY=${1?"Usage: $0 7"}
 
 mkdir "$DAY"
 cp template.py "$DAY"/main.py
-touch "$DAY"/input.txt
+touch "$DAY"/input.txt "$DAY"/1.txt
 
 URL_PREFIX='https://adventofcode.com/2016/day'
 SUBLIME='/c/Program Files/Sublime Text 3/sublime_text.exe'
