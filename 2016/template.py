@@ -10,6 +10,14 @@ import sys
 from pprint import pprint as pp
 import re
 
+def nonedict(d):
+	res=defaultdict(lambda: None)
+	res.update(d)
+	return res
+
+def clamp(x,a,b):
+	return max(a,min(x,b))
+
 def getline():
 	line=raw_input()
 	m=re.match(r"^(\d+)$",line)
@@ -17,33 +25,67 @@ def getline():
 	a=m.groups()
 	return
 
-def nonedict(d):
-	res=defaultdict(lambda: None)
-	for k,v in d.items():
-		res[k]=v
-	return res
+class Parser:
+	def __init__(self,text):
+		self.text=text
+	def done(self):
+		"""
+		returns true iff the only stuff left is spaces
+		"""
+		return self.peek(r"\s*$")
+	def peek(self,rgx):
+		"""
+		returns the match, without mutating internal state
+		"""
+		return re.match(rgx,self.text)
+	def maybe(self,rgx):
+		"""
+		returns the match and mutates state if a match was found
+		if no match found, nothing changes
+		"""
+		# match only matches at beginning of text
+		m=self.peek(rgx)
+		if m:
+			a,b=m.span()
+			assert(a==0)
+			self.text=self.text[b:]
+		return m
+	def parse(self,rgx):
+		"""
+		returns the _groups_ and mutates state.
+		_requires_ a match to be found
+		"""
+		m=self.maybe(rgx)
+		assert(m)
+		return m.groups()
 
-def clamp(x,a,b):
-	return max(a,min(x,b))
+#
+#
+#
 
-def walk(cmds):
-	facing=1
-	x=0
-	y=0
-	for t in cmds:
-		if t=="\n":
-			yield x,y
-		else:
-			dx,dy={
-				"U": (0,-1),
-				"D": (0,1),
-				"L": (-1,0),
-				"R": (1,0),
-			}[t]
-			# print t,dx,dy
-			x=clamp(x+dx,-1,1)
-			y=clamp(y+dy,-1,1)
+def test(passport):
+	for key in "byr iyr eyr hgt hcl ecl pid".split(" "):
+		if not key in passport:
+			# print "invalid; no %s"%key
+			return False
+	return True
 
-tokens=sys.stdin.read()
-for x,y in walk(tokens):
-	print (y+1)*3+(x+1)+1,
+def parse(text):
+	p=Parser(text)
+	passport={}
+	while not p.done():
+		k,v=p.parse(r"([^:\s]+):([^:\s]+)")
+		passport[k]=v
+		p.parse(r"\s")
+		if p.maybe(r"\n"):
+			yield passport
+			passport={}
+	yield passport
+
+num=0
+for passport in parse(sys.stdin.read()):
+	v=test(passport)
+	# print passport,v
+	if v:
+		num+=1
+print num
