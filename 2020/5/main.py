@@ -26,12 +26,15 @@ def nonedict(d):
 def clamp(x,a,b):
 	return max(a,min(x,b))
 
+# I preprocessed the input in my text editor
+# for this problem: F->0 B->1 L->0 R->1
+
 ids=[int(line.strip(),2) for line in sys.stdin]
 # print max(ids)
 print sorted(ids)
 # i=54
 # for x in sorted(ids):
 # 	if x!=i:
-# 		print x
+# 		print i
 # 		break
 # 	i+=1
