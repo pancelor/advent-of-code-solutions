@@ -7,11 +7,11 @@ cpy 7 c
 inc d
 dec c
 jnz c -2
-cpy a c
-inc a
-dec b
-jnz b -2
-cpy c b
+cpy a c  # c=a
+inc a    # a,b=a+b,0
+dec b    #
+jnz b -2 #
+cpy c b  # b=c
 dec d
 jnz d -6
 cpy 13 c

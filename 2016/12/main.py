@@ -122,6 +122,7 @@ def parse(text):
 
 prog=list(parse(sys.stdin.read()))
 pc=0
+registers["c"]=1
 while pc<len(prog):
 	cmd=prog[pc]
 	# print pc,cmd,
