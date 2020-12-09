@@ -70,6 +70,8 @@ for line in sys.stdin:
 # print nums
 
 n=25
+# n=5
+target=0
 for i in range(len(nums)-n):
 	goal=nums[i+n]
 	ok=False
@@ -79,5 +81,12 @@ for i in range(len(nums)-n):
 			break
 	if not ok:
 		# print i, nums[i:i+n],goal
-		print goal
-		sys.exit()
+		target=goal
+		break
+print target
+
+for i in range(len(nums)):
+	for j in range(len(nums)):
+		if sum(nums[i:j])==target:
+			print min(nums[i:j])+max(nums[i:j])
+			sys.exit(0)
