@@ -69,8 +69,11 @@ for line in sys.stdin:
 
 # print nums
 
-n=25
-# n=5
+if len(nums)<100:
+	n=5
+else:
+	n=25
+
 target=0
 for i in range(len(nums)-n):
 	goal=nums[i+n]
@@ -85,8 +88,28 @@ for i in range(len(nums)-n):
 		break
 print target
 
+print "part2"
+
+done=False
 for i in range(len(nums)):
 	for j in range(len(nums)):
 		if sum(nums[i:j])==target:
-			print min(nums[i:j])+max(nums[i:j])
-			sys.exit(0)
+			print i,j,min(nums[i:j])+max(nums[i:j])
+			done=True
+			break
+	if done:
+		break
+
+print "grimmy's algorithm:"
+
+start = 0
+end = 0
+sum = nums[0]
+while sum != target:
+	if sum < target:
+		end+=1
+		sum += nums[end]
+	elif sum > target:
+		sum -= nums[start]
+		start+=1
+print start,end
