@@ -27,6 +27,7 @@ def getline():
 
 ratings=sorted(list(map(int,sys.stdin)))
 N=len(ratings)
+
 # print ratings
 
 c=Counter()
@@ -37,4 +38,21 @@ for i in range(N-1):
 c[1]+=1
 c[3]+=1
 
-print c, c[1]*c[3]
+# print c, c[1]*c[3]
+
+M=ratings[-1]+3
+table=[0]*M
+table[0]=1
+table[1]=1
+for r in ratings:
+	# print i
+	ways=0
+	if r>=1:
+		ways+=table[r-1]
+	if r>=2:
+		ways+=table[r-2]
+	if r>=3:
+		ways+=table[r-3]
+	table[r]=ways
+	# print r, table
+print table[-3]
