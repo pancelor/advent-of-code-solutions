@@ -67,23 +67,31 @@ def foo(p):
 	est,=p.parse(r"(\d+)\n")
 
 	est=int(est)
-	i=0
+	rem=-1
 	while not p.done():
-		i+=1
+		rem+=1
 		n,_=p.parse(r"(\d+|x)(,|\n)")
 		# print n
 		if n=="x":
 			continue
 		else:
 			n=int(n)
-			wait=-(est%n)%n
-			yield [n,wait]
+			# wait=-(est%n)%n
+			yield [n,(-rem)%n]
 
 p=Parser(sys.stdin.read())
+ls=sorted(foo(p),key=lambda x:x[0])
 
-ls=sorted(foo(p),key=lambda x:x[1])
 print ls
-print ls[0][0]*ls[0][1]
 
-print "part 2"
+x=ls[0][1]
+m=ls[0][0]
+for ix in range(len(ls)-1):
+	for i in itt.count():
+		# print i,x,m
+		if x%ls[ix+1][0]==ls[ix+1][1]:
+			print "found!",x,ls[:ix+2]
+			m*=ls[ix+1][0]
+			break
+		x+=m
 
