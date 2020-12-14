@@ -63,29 +63,45 @@ class Parser:
 #
 #
 
+def spread(xmask_bits):
+	for i in range(2**len(xmask_bits)):
+		n=0
+		for j,b_ix in enumerate(xmask_bits):
+			if i&(1<<j)>0:
+				n|=1<<b_ix
+		yield n
+
 mem=defaultdict(lambda: 0)
-passmask=0
-stamp=0
+xmask=0
+xmask_bits=[]
+ormask=0
 p=Parser(sys.stdin.read())
 while not p.done():
 	if p.peek(r"mask"):
 		mask,_=p.parse(r"mask = ((X|0|1)+)\n")
-		passmask=0
-		stamp=0
+		xmask=0
+		xmask_bits=[]
+		ormask=0
 		for i,ch in enumerate(reversed(mask)):
 			if ch=="X":
-				passmask|=1<<i
+				xmask|=1<<i
+				xmask_bits.append(i)
 			elif ch=="1":
-				stamp|=1<<i
-		print passmask,stamp
-		print("passmask {0:>08b}".format(passmask))
-		print("stamp {0:>08b}".format(stamp))
+				ormask|=1<<i
+		# print "ormask {:>08b}".format(ormask)
+		# print "xmask {:>08b}".format(xmask)
+		# for s in spread(xmask_bits):
+		# 	print "  spread {:>08b}".format(s)
 	else:
 		addr,val=p.parse(r"mem\[(\d+)\] = (\d+)\n")
 		addr=int(addr)
 		val=int(val)
-		mem[addr]=(val&passmask)|stamp
-		print("mem[{0}]={1:>08b}={1}".format(addr,mem[addr]))
+		combined=(addr|ormask)&(~xmask)
+		# print addr,"combined {0:>08b}".format(combined)
+		for s in spread(xmask_bits):
+			c2=combined|s
+			# print "c2 {0:>08b}".format(c2)
+			mem[c2]=val
 
 sum=0
 for k,v in mem.items():
