@@ -86,16 +86,21 @@ def foo(nums):
 			last=i-previ
 		yield last
 
-p=Parser(sys.stdin.read())
-nums=[]
-while not p.done():
-	n,_=p.parse(r"(\d+)(,|\n)")
-	nums.append(int(n))
-print nums
+# nums=[0,3,6] # the 30000000th number spoken is 175594.
+# nums=[1,3,2] # the 30000000th number spoken is 2578.
+# nums=[2,1,3] # the 30000000th number spoken is 3544142.
+# nums=[1,2,3] # the 30000000th number spoken is 261214.
+# nums=[2,3,1] # the 30000000th number spoken is 6895259.
+# nums=[3,2,1] # the 30000000th number spoken is 18.
+# nums=[3,1,2] # the 30000000th number spoken is 362.
+
+nums=[11,0,1,10,5,19]
 
 i=0
 for i,x in enumerate(foo(nums)):
 	j=i+len(nums)+1
-	if j==2020:
+	if j%3000000==0:
+		print "10%"
+	if j==30000000:
 		print x
 		break
