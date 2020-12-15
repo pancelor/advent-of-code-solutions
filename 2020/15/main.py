@@ -95,10 +95,13 @@ def foo(nums):
 # nums=[3,1,2] # the 30000000th number spoken is 362.
 
 nums=[11,0,1,10,5,19]
+nums=[0,0,1]
 
 i=0
 for i,x in enumerate(foo(nums)):
 	j=i+len(nums)+1
+	if j<1000:
+		print x,
 	if j%3000000==0:
 		print "10%"
 	if j==30000000:

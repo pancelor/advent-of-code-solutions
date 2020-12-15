@@ -59,28 +59,11 @@ class Parser:
 		assert(m)
 		return m.groups()
 
-#
-#
-#
-
-def test(passport):
-	for key in "byr iyr eyr hgt hcl ecl pid".split(" "):
-		if not key in passport:
-			# print "invalid; no %s"%key
-			return False
-	return True
-
 def parse(text):
 	p=Parser(text)
-	passport={}
 	while not p.done():
-		k,v=p.parse(r"([^:\s]+):([^:\s]+)")
-		passport[k]=v
-		p.parse(r"\s")
-		if p.maybe(r"\n"):
-			yield passport
-			passport={}
-	yield passport
+		n,=p.parse(r"(-?\d+)\n")
+    yield int(n)
 
 num=0
 for passport in parse(sys.stdin.read()):
