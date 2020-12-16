@@ -88,36 +88,76 @@ def parse_ranges(p):
 		d[name]=ranges
 	return d
 
+def checkfield(lookup,key,val):
+	for a,b in lookup[key]:
+		if a<=val and val<=b:
+			return True
+	return False
+
 def checkany(lookup,val):
 	for key in lookup:
-		for a,b in lookup[key]:
-			if a<=val and val<=b:
-				return True
+		if checkfield(lookup,key,val):
+			return True
 	return False
+
+def valid(lookup,t):
+	valid=True
+	for v in t:
+		if not checkany(lookup,v):
+			return False
+	return True
 
 p=Parser(sys.stdin.read())
 lookup=parse_ranges(p)
-# print lookup
+nfields=len(lookup)
+test=nfields<10
+if test:
+	print lookup
 
 p.parse(r"your ticket:\n");
 myticket=parse_ticket(p)
-# print myticket
+if test:
+	print "my", myticket
 
 p.parse(r"\nnearby tickets:\n");
 tickets=[]
 while not p.done():
 	ticket=parse_ticket(p)
-	tickets.append(ticket)
-# print tickets
+	if valid(lookup,ticket):
+		tickets.append(ticket)
+if test:
+	print "nearby",tickets
 
-n=0
-for t in tickets:
-	valid=True
-	for v in t:
-		# print "ticket val",v
-		if not checkany(lookup,v):
-			valid=False
-			n+=v
-			break
-	print t, valid
-print n
+# poss[i] is the list of possibilities the ith field could be
+poss=defaultdict(lambda: lookup.keys())
+
+changes=True
+while changes:
+	changes=False
+	# print "\n\n\nNEW_ITERATION\n\n"
+	for t in tickets:
+		# print "ticket:",t
+		for i,v in enumerate(t):
+			for key in poss[i][:]:
+				if not checkfield(lookup,key,v):
+					# print "throwing out key '%s' for field %d"%(key,i)
+					poss[i].remove(key)
+					changes=True
+			if len(poss[i])<=1:
+				assert(len(poss[i])==1)
+				key=poss[i][0]
+				# print "only possibility left is",key
+				for j in range(nfields):
+					if i!=j:
+						# print "throwing out key '%s' for field %d"%(key,j)
+						if key in poss[j]:
+							poss[j].remove(key)
+							changes=True
+# pp(poss)
+prod=1
+for i,keys in poss.items():
+	key=keys[0]
+	if re.match(r"departure ",key):
+		print i,key
+		prod*=myticket[i]
+print prod
