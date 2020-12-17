@@ -12,12 +12,18 @@ import re
 from copy import deepcopy
 
 class Sim:
-	def __init__(self,):
+	def __init__(self,grid):
 		self.chunks=[]
+		self.n=0
+		self.w=len(grid[0])
+		self.h=len(grid)
+		for y,row in enumerate(grid):
+			for x,v in enumerate(row):
+				self.set(x,y,0,v)
 	def chunk_for(self,x,y,z):
 		chunk=None
 		for c in self.chunks:
-			if c.z==z and c.x==x/8 and c.y==y/8:
+			if c["z"]==z and c["x"]==x/8 and c["y"]==y/8:
 				chunk=c
 		if chunk==None:
 			grid=[]
@@ -25,19 +31,51 @@ class Sim:
 				grid.append([False]*8)
 			chunk={"z":z,"y":y/8,"x":x/8,"grid":grid}
 			self.chunks.append(chunk)
-			print "new chunk!",chunk
+			# print "new chunk!\n",self.chunkstr(chunk)
 		return chunk
 	def get(self,x,y,z):
 		chunk=self.chunk_for(x,y,z)
-		return chunk[y%8][x%8]
+		return chunk["grid"][y%8][x%8]
 	def set(self,x,y,z,val):
 		chunk=self.chunk_for(x,y,z)
-		chunk[y%8][x%8]=val
+		chunk["grid"][y%8][x%8]=val
+	def step(self):
+		old=deepcopy(self)
+		self.n+=1
+		for z in range(-self.n,self.n+1):
+			for y in range(-self.n,self.h+self.n+1):
+				for x in range(-self.n,self.w+self.n+1):
+					count=0
+					# print "x,y,z",x,y,z
+					for nx,ny,nz in neighbors(x,y,z):
+						if old.get(nx,ny,nz):
+							# print "  nx,ny,nz",nx,ny,nz
+							count+=1
+					if old.get(x,y,z):
+						if not (count==2 or count==3):
+							self.set(x,y,z,False)
+					else:
+						if count==3:
+							self.set(x,y,z,True)
+	def count(self):
+		c=0
+		for z in range(-self.n,self.n+1):
+			for y in range(-self.n,self.h+self.n+1):
+				for x in range(-self.n,self.w+self.n+1):
+					if self.get(x,y,z):
+						c+=1
+		return c
 	def __str__(self):
+		s=""
 		for c in self.chunks:
-			print "x,y,z",c["x"]*8,c["y"]*8,c["z"]
-			for row in c.grid:
-				print ''.join("#" if x else "." for x in row)
+			s+="x,y,z=%d,%d,%d\n"%(c["x"]*8,c["y"]*8,c["z"])
+			s+=self.chunkstr(c)
+		return s
+	def chunkstr(self,c):
+		s=""
+		for row in c["grid"]:
+			s+=''.join("#" if x else "." for x in row)+"\n"
+		return s
 
 def neighbors(x,y,z):
 	for dz in range(-1,2):
@@ -47,67 +85,16 @@ def neighbors(x,y,z):
 					continue
 				yield x+dx,y+dy,z+dz
 
-def make_empty(slices,n):
-	s=[]
-	for y,row in enumerate(slices[0]):
-		row2=[]
-		for x,val in enumerate(row):
-			row2.append(False)
-		s.append(row2)
-	slices[n]=s
-
-def get(slices,x,y,z):
-	if z in slices:
-		if 0<=x and x<len(slices[0][0]):
-			if 0<=y and y<len(slices[0]):
-				return slices[z][y][x]
-	return False
-
-def step(slices):
-	newslices=deepcopy(slices)
-	n=slices["n"]
-	n+=1
-	newslices["n"]=n
-	make_empty(newslices,-n)
-	make_empty(newslices,n)
-	for z in range(-n,n+1):
-		for y in range(len(slices[0])):
-			for x in range(len(slices[0][0])):
-				count=0
-				# print "x,y,z",x,y,z
-				for nx,ny,nz in neighbors(x,y,z):
-					if get(slices,nx,ny,nz):
-						# print "  nx,ny,nz",nx,ny,nz
-						count+=1
-				if get(slices,x,y,z):
-					if not (count==2 or count==3):
-						newslices[z][y][x]=False
-				else:
-					if count==3:
-						newslices[z][y][x]=True
-	return newslices
-
-slices={"n":0}
-slices[0]=[]
+grid=[]
 for line in sys.stdin:
 	row=[c=="#" for c in line.strip()]
-	slices[0].append(row)
+	grid.append(row)
 
-pslice(slices[0])
-# for y in range(3):
-# 	for x in range(3):
-# 		print get(slices,x,y,0)
+sim=Sim(grid)
+print sim
 
 for i in range(6):
-	slices=step(slices)
-
-count=0
-n=slices["n"]
-for z in range(-n,n+1):
-	print z
-	pslice(slices[z])
-	for y,row in enumerate(slices[z]):
-		for x,val in enumerate(row):
-			if val:
-				count+=1
-print count
+	# print "STEP"
+	sim.step()
+	# print sim
+print sim.count()
