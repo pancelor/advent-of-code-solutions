@@ -59,28 +59,33 @@ class Parser:
 		assert(m)
 		return m.groups()
 
-def eval_expr(p):
-	n,=p.parse(r"\s*(-?\d+|\()")
-	if n=="(":
-		acc=eval_expr(p)
-		p.parse(r"\)")
+def eval_expr1(p):
+	n1=eval_expr2(p)
+	if p.maybe(r"\s*\*"):
+		n2=eval_expr1(p)
+		return n1*n2
 	else:
-		acc=int(n)
-	while not p.done() and not p.peek(r"\s*\)"):
-		op,n=p.parse(r"\s*([+*])\s*(-?\d+|\()")
-		if n=="(":
-			n=eval_expr(p)
-			p.parse(r"\)")
-		else:
-			n=int(n)
-		if op=="+":
-			acc+=n
-		elif op=="*":
-			acc*=n
-	return acc
+		return n1
+
+def eval_expr2(p):
+	n1=eval_expr3(p)
+	if p.maybe(r"\s*\+"):
+		n2=eval_expr2(p)
+		return n1+n2
+	else:
+		return n1
+
+def eval_expr3(p):
+	if p.maybe(r"\s*\("):
+		res=eval_expr1(p)
+		p.parse(r"\)")
+		return res
+	else:
+		n,=p.parse(r"\s*(-?\d+)")
+		return int(n)
 
 num=0
 for line in sys.stdin:
 	p=Parser(line)
-	num+=eval_expr(p)
+	num+=eval_expr1(p)
 print num
