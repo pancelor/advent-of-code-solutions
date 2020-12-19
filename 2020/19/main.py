@@ -70,11 +70,9 @@ def parse(text):
 			index[rulenum]=set()
 		opts=[]
 		starts=set()
-		ns=0
 		if p.maybe(r" \""):
 			s,=p.parse(r"(\w)\"\n")
 			starts.add(s)
-			ns=1
 		else:
 			opts=[]
 			while 1:
@@ -84,7 +82,7 @@ def parse(text):
 					break
 				else:
 					p.parse(r" \|")
-		rules[rulenum]={"opts":opts,"starts":starts,"ns":ns}
+		rules[rulenum]={"opts":opts,"starts":starts}
 		for opt in opts:
 			if opt[0] not in index:
 				index[opt[0]]=set()
@@ -111,16 +109,20 @@ seen=set()
 for k,r in rules.items():
 	if len(r["starts"])>0:
 		front.add(k)
+# print "base rules",front
 
 while len(front)>0:
+	# print "front",front
 	f=front.pop()
 	seen.add(f)
 	starts=rules[f]["starts"]
+	# print f,starts
 	for rid in index[f]:
+		# print " > ",rid,r["starts"],
 		r=rules[rid]
 		r["starts"].update(starts)
-		r["ns"]+=1
-		if r["ns"]==len(r["opts"]):
+		# print r["starts"]
+		if set(o[0] for o in r["opts"])<=seen:
 			assert(rid not in seen)
 			front.add(rid)
 print_rules(rules)
@@ -140,7 +142,7 @@ def test(s,i=0,rid=0):
 	r=rules[rid]
 	opts=r["opts"]
 	starts=r["starts"]
-	if i>=len(s):# or s[i] not in starts:
+	if i>=len(s) or s[i] not in starts:
 		return
 	if len(opts)>0:
 		for o in opts:
@@ -148,8 +150,7 @@ def test(s,i=0,rid=0):
 				yield i2
 	else:
 		# base case; we already know the first character is in starts
-		if s[i]==list(starts)[0]:
-			yield i+1
+		yield i+1
 
 # sys.exit(0)
 
