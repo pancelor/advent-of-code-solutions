@@ -69,10 +69,10 @@ def parse(text):
 		if rulenum not in index:
 			index[rulenum]=set()
 		opts=[]
-		starts=set()
+		lit=""
 		if p.maybe(r" \""):
 			s,=p.parse(r"(\w)\"\n")
-			starts.add(s)
+			lit=s
 		else:
 			opts=[]
 			while 1:
@@ -82,7 +82,7 @@ def parse(text):
 					break
 				else:
 					p.parse(r" \|")
-		rules[rulenum]={"opts":opts,"starts":starts}
+		rules[rulenum]={"opts":opts,"lit":lit}
 		for opt in opts:
 			if opt[0] not in index:
 				index[opt[0]]=set()
@@ -97,35 +97,10 @@ def print_rules(rules):
 	print "RULES"
 	for rid,r in rules.items():
 		opts=r["opts"]
-		starts=r["starts"]
-		print "{}: {} ({})".format(rid,opts,''.join(list(starts)))
+		lit=r["lit"]
+		print "{}: {}".format(rid,opts or lit)
 
-rules,strs,index=parse(sys.stdin.read())
-pp(index)
-
-# figure out starts
-front=set()
-seen=set()
-for k,r in rules.items():
-	if len(r["starts"])>0:
-		front.add(k)
-# print "base rules",front
-
-while len(front)>0:
-	# print "front",front
-	f=front.pop()
-	seen.add(f)
-	starts=rules[f]["starts"]
-	# print f,starts
-	for rid in index[f]:
-		# print " > ",rid,r["starts"],
-		r=rules[rid]
-		r["starts"].update(starts)
-		# print r["starts"]
-		if set(o[0] for o in r["opts"])<=seen:
-			assert(rid not in seen)
-			front.add(rid)
-print_rules(rules)
+rules,strs,_=parse(sys.stdin.read())
 
 def test_opt(s,i,opt):
 	arr1=[i]
@@ -141,18 +116,17 @@ def test_opt(s,i,opt):
 def test(s,i=0,rid=0):
 	r=rules[rid]
 	opts=r["opts"]
-	starts=r["starts"]
-	if i>=len(s) or s[i] not in starts:
+	lit=r["lit"]
+	if i>=len(s):
 		return
 	if len(opts)>0:
 		for o in opts:
 			for i2 in test_opt(s,i,o):
 				yield i2
 	else:
-		# base case; we already know the first character is in starts
-		yield i+1
-
-# sys.exit(0)
+		# base case
+		if s[i]==lit:
+			yield i+1
 
 n=0
 for s in strs:
@@ -162,8 +136,4 @@ for s in strs:
 			n+=1
 			# print "  PASS"
 			break
-		else:
-			pass
-			# print "  FAIL (not whole match)"
-	# print
 print n
